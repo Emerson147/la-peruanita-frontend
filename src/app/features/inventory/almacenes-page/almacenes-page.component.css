@@ -1,0 +1,35 @@
+/* almacenes-page.component.css */
+
+/* Animación de entrada suave para la página */
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom Scrollbar for the table container */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(168, 162, 158, 0.3);
+  border-radius: 20px;
+}
+
+.dark .overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(87, 83, 78, 0.4);
+}

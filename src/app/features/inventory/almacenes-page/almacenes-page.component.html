@@ -1,0 +1,282 @@
+<div class="min-h-screen bg-[#f8fafc] dark:bg-[#09090b] p-4 sm:p-8 transition-colors duration-300 font-sans tracking-tight">
+  <div class="w-full space-y-6 relative">
+    
+    <!-- Header Premium -->
+    <app-ui-page-header
+      title="Catálogo de Almacenes"
+      subtitle="DenRaf · Gestión de sucursales y ubicaciones físicas."
+      materialIcon="store"
+    >
+      <div class="flex gap-2">
+        <button
+          (click)="openCreateModal()"
+          class="bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-full px-6 py-2.5 font-bold shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm whitespace-nowrap"
+        >
+          <span class="material-symbols-outlined text-sm">add</span>
+          Nueva Sucursal
+        </button>
+      </div>
+    </app-ui-page-header>
+
+    <!-- Resumen Bento Grid (Estadísticas Zen Compactas) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-4 fade-in duration-500">
+      <!-- Card: Total Almacenes -->
+      <div class="relative overflow-hidden bg-white/80 dark:bg-stone-900/40 p-4 rounded-3xl border border-stone-200/60 dark:border-stone-800 shadow-sm transition-all duration-300 group">
+        <div class="flex items-center gap-4">
+          <div class="h-10 w-10 rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-stone-500 group-hover:bg-stone-900 group-hover:text-white dark:group-hover:bg-stone-100 dark:group-hover:text-stone-900 transition-all duration-300">
+            <span class="material-symbols-outlined text-[20px]">store</span>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+              Total Sucursales
+            </p>
+            <h3 class="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+              {{ totalAlmacenes() }}
+            </h3>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Card: Activos -->
+      <div class="relative overflow-hidden bg-white/80 dark:bg-stone-900/40 p-4 rounded-3xl border border-stone-200/60 dark:border-stone-800 shadow-sm transition-all duration-300 group">
+        <div class="flex items-center gap-4">
+          <div class="h-10 w-10 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 transition-all duration-300">
+            <span class="material-symbols-outlined text-[20px]">check_circle</span>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-widest">
+              Locales Activos
+            </p>
+            <h3 class="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+              {{ activosCount() }}
+            </h3>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Card: Inactivos -->
+      <div class="relative overflow-hidden bg-white/80 dark:bg-stone-900/40 p-4 rounded-3xl border border-stone-200/60 dark:border-stone-800 shadow-sm transition-all duration-300 group">
+        <div class="flex items-center gap-4">
+          <div class="h-10 w-10 rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-stone-500 transition-all duration-300">
+            <span class="material-symbols-outlined text-[20px]">block</span>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+              En Mantenimiento
+            </p>
+            <h3 class="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+              {{ inactivosCount() }}
+            </h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLA DE DATOS (Zen Canvas) -->
+    <div class="bg-white dark:bg-stone-900 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm overflow-hidden transition-all duration-300">
+      
+      <!-- Loading State -->
+      @if (isLoading()) {
+        <div class="p-20 flex flex-col items-center justify-center">
+          <span class="material-symbols-outlined animate-spin text-4xl text-stone-400 mb-4">refresh</span>
+          <p class="text-stone-500 text-sm font-bold tracking-widest uppercase">Cargando catálogo...</p>
+        </div>
+      } @else if (almacenes().length === 0) {
+        <!-- Empty State -->
+        <div class="px-8 py-32 text-center">
+          <div class="flex flex-col items-center gap-4 animate-in fade-in duration-700">
+            <div class="h-20 w-20 bg-stone-100 dark:bg-stone-800/50 rounded-[2rem] flex items-center justify-center text-stone-300 dark:text-stone-700 shadow-inner">
+              <span class="material-symbols-outlined text-4xl">store_mall_directory</span>
+            </div>
+            <div class="space-y-1">
+              <p class="text-stone-800 dark:text-stone-200 font-bold text-lg tracking-tight">
+                Sin sucursales registradas
+              </p>
+              <p class="text-stone-500 dark:text-stone-400 text-sm max-w-[280px] mx-auto leading-relaxed">
+                Comenzá agregando tu primer almacén para gestionar stock distribuido.
+              </p>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <!-- Table -->
+        <div class="overflow-x-auto no-scrollbar transition-all duration-300">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="text-stone-400 dark:text-stone-500 text-[10px] font-bold tracking-[0.2em] uppercase">
+                <th class="px-8 py-6">Sucursal</th>
+                <th class="px-8 py-6">Ubicación</th>
+                <th class="px-8 py-6 text-center">Estado</th>
+                <th class="px-8 py-6 text-right sticky right-0 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md">Gestión</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100 dark:divide-stone-800/50">
+              @for (almacen of almacenes(); track almacen.id; let idx = $index) {
+                <tr class="group hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-all duration-300 cursor-default animate-in fade-in slide-in-from-bottom-4 fill-mode-both" [style.animation-delay]="idx * 30 + 'ms'">
+                  
+                  <!-- Almacén -->
+                  <td class="px-8 py-5">
+                    <div class="flex items-center gap-4">
+                      <div class="h-12 w-12 rounded-2xl bg-stone-100 dark:bg-stone-800 overflow-hidden shrink-0 border border-stone-200/50 dark:border-stone-700/50 relative shadow-sm transition-all group-hover:shadow-md flex items-center justify-center text-stone-400 dark:text-stone-500 group-hover:text-stone-900 dark:group-hover:text-stone-100">
+                        <span class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform duration-500">store</span>
+                      </div>
+                      <div class="flex flex-col">
+                        <h3 class="text-[13px] font-bold text-stone-900 dark:text-stone-100 group-hover:text-stone-700 dark:group-hover:text-stone-300 transition-colors cursor-pointer leading-tight" (click)="openEditModal(almacen)">
+                          {{ almacen.nombre }}
+                        </h3>
+                        <span class="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[12px]">qr_code_2</span>
+                          {{ almacen.id | slice:0:8 }}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  
+                  <!-- Dirección -->
+                  <td class="px-8 py-5">
+                    <div class="flex flex-col gap-1">
+                      <span class="text-xs font-bold text-stone-800 dark:text-stone-200">
+                        {{ almacen.direccion || 'No especificada' }}
+                      </span>
+                      <span class="text-[10px] text-stone-400 dark:text-stone-500 font-bold flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[12px]">place</span>
+                        Dirección física
+                      </span>
+                    </div>
+                  </td>
+                  
+                  <!-- Estado -->
+                  <td class="px-8 py-5">
+                    <div class="flex flex-col items-center gap-1.5">
+                      <div class="px-3 py-1.5 rounded-full inline-flex items-center gap-2 text-[10px] font-black tracking-[0.1em] uppercase transition-all duration-500"
+                        [ngClass]="almacen.activo ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-800/30' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 border border-stone-200/50 dark:border-stone-700/50'">
+                        <span class="w-1.5 h-1.5 rounded-full shadow-sm" [ngClass]="almacen.activo ? 'bg-emerald-500' : 'bg-stone-400'"></span>
+                        {{ almacen.activo ? 'Operativo' : 'Inactivo' }}
+                      </div>
+                    </div>
+                  </td>
+                  
+                  <!-- Gestión -->
+                  <td class="px-8 py-5 text-right whitespace-nowrap sticky right-0 bg-white/95 dark:bg-stone-900/95 group-hover:bg-stone-50/95 dark:group-hover:bg-stone-800/95 transition-all duration-300">
+                    <div class="flex items-center justify-end gap-2 translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-500">
+                      
+                      <button (click)="toggleActivo(almacen)" class="h-9 w-9 rounded-xl shadow-sm border text-stone-400 transition-all flex items-center justify-center cursor-pointer group/btn"
+                        [ngClass]="almacen.activo ? 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:text-red-500 hover:border-red-300 dark:hover:border-red-900/50' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:text-emerald-500 hover:border-emerald-300 dark:hover:border-emerald-900/50'"
+                        [title]="almacen.activo ? 'Inactivar sucursal' : 'Activar sucursal'">
+                        <span class="material-symbols-outlined text-[18px] group-hover/btn:scale-110 transition-transform">
+                          {{ almacen.activo ? 'toggle_on' : 'toggle_off' }}
+                        </span>
+                      </button>
+                      
+                      <button (click)="openEditModal(almacen)" class="h-9 w-9 rounded-xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200 dark:border-stone-700 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:border-stone-300 transition-all flex items-center justify-center cursor-pointer group/btn" title="Editar">
+                        <span class="material-symbols-outlined text-[18px] group-hover/btn:scale-110 transition-transform">edit</span>
+                      </button>
+                      
+                      <button (click)="confirmDelete(almacen.id!)" class="h-9 w-9 rounded-xl bg-red-50/50 dark:bg-red-900/20 shadow-sm border border-red-100 dark:border-red-900/30 text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 transition-all flex items-center justify-center cursor-pointer group/btn" title="Eliminar">
+                        <span class="material-symbols-outlined text-[18px] group-hover/btn:scale-110 transition-transform">delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Paginación Zen Footer -->
+        <div class="px-8 py-6 border-t border-stone-100 dark:border-stone-800 flex flex-col sm:flex-row gap-4 items-center justify-between bg-stone-50/50 dark:bg-stone-900/50">
+          <div class="flex items-center gap-4">
+            <span class="text-[13px] font-medium text-stone-500">
+              Mostrando <span class="font-bold text-stone-800 dark:text-stone-200">{{ almacenes().length }} sucursales</span>
+            </span>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- Modal Formulario -->
+<app-ui-animated-dialog 
+  [isOpen]="isModalOpen()" 
+  (isOpenChange)="!$event && closeModal()"
+  [title]="editingAlmacen() ? 'Editar Sucursal' : 'Nueva Sucursal'">
+  
+  <div class="mb-6 flex items-center gap-4">
+    <div class="h-12 w-12 rounded-[1.25rem] bg-stone-100 dark:bg-stone-800/80 border border-stone-200/60 dark:border-stone-700/60 flex items-center justify-center text-stone-700 dark:text-stone-300 shadow-xs">
+      <span class="material-symbols-outlined text-xl">{{ editingAlmacen() ? 'edit_square' : 'add_business' }}</span>
+    </div>
+    <div class="flex flex-col gap-1">
+      <p class="text-[11px] text-stone-400 dark:text-stone-500 font-black tracking-widest uppercase">
+        {{ editingAlmacen() ? 'Modificá los detalles del almacén' : 'Registrá una nueva ubicación' }}
+      </p>
+    </div>
+  </div>
+  
+  <div class="space-y-5 py-4">
+    @if (formError()) {
+      <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm flex gap-2 items-start border border-red-100 dark:border-red-900/50">
+        <span class="material-symbols-outlined text-[18px]">error_outline</span>
+        <p>{{ formError() }}</p>
+      </div>
+    }
+
+    <div>
+      <app-ui-label class="mb-3 block text-[10px] uppercase font-black tracking-widest text-stone-400">Nombre del Almacén *</app-ui-label>
+      <app-ui-input [(ngModel)]="formData().nombre" placeholder="Ej. Almacén Central, Tienda Lima..."></app-ui-input>
+    </div>
+
+    <div>
+      <app-ui-label class="mb-3 block text-[10px] uppercase font-black tracking-widest text-stone-400">Dirección</app-ui-label>
+      <app-ui-input [(ngModel)]="formData().direccion" placeholder="Ej. Av. Principal 123..."></app-ui-input>
+    </div>
+
+    <div class="pt-2 flex items-center justify-between p-4 rounded-[1.5rem] border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50">
+      <div>
+        <p class="text-[13px] font-bold text-stone-800 dark:text-stone-200">Estado Operativo</p>
+        <p class="text-[10px] text-stone-500 font-black uppercase tracking-widest mt-1">Habilita operaciones en la sucursal</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" [(ngModel)]="formData().activo" class="sr-only peer">
+        <div class="w-11 h-6 bg-stone-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-stone-100 dark:peer-focus:ring-stone-800 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-stone-900 dark:peer-checked:bg-stone-100"></div>
+      </label>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-3 pt-6 border-t border-stone-200 dark:border-stone-800 mt-4">
+    <button (click)="closeModal()" class="px-5 py-2.5 rounded-full text-[13px] font-bold text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors">
+      Cancelar
+    </button>
+    <button (click)="saveAlmacen()" [disabled]="isSaving()" class="bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-full px-6 py-2.5 font-bold shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-[13px] whitespace-nowrap disabled:opacity-50">
+      {{ isSaving() ? 'Guardando...' : (editingAlmacen() ? 'Guardar Cambios' : 'Crear Almacén') }}
+    </button>
+  </div>
+</app-ui-animated-dialog>
+
+<!-- Modal Confirmar Eliminación -->
+<app-ui-animated-dialog 
+  [isOpen]="confirmDeleteId() !== null" 
+  (isOpenChange)="!$event && cancelDelete()"
+  title="Archivar Sucursal"
+  maxWidth="md">
+  
+  <div class="py-6 flex flex-col items-center text-center">
+    <div class="h-16 w-16 rounded-[1.5rem] bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-500 flex items-center justify-center mb-6 shadow-inner">
+      <span class="material-symbols-outlined text-3xl">delete_forever</span>
+    </div>
+    <h3 class="text-xl font-black tracking-tight text-stone-900 dark:text-white">¿Archivar definitivamente?</h3>
+    <p class="text-[13px] text-stone-500 dark:text-stone-400 mt-3 max-w-[280px] leading-relaxed">
+      Esta acción removerá el almacén del catálogo. Si tiene stock vinculado, se recomienda desactivarlo en lugar de archivarlo.
+    </p>
+  </div>
+
+  <div class="flex flex-col sm:flex-row justify-end gap-3 w-full mt-4">
+    <button (click)="cancelDelete()" class="px-5 py-2.5 rounded-full text-[13px] font-bold text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors sm:w-auto w-full">
+      Mantener Almacén
+    </button>
+    <button (click)="executeDelete()" class="bg-red-500 hover:bg-red-600 text-white rounded-full px-6 py-2.5 font-bold shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-[13px] sm:w-auto w-full">
+      <span class="material-symbols-outlined text-[16px]">delete</span>
+      Sí, Archivar
+    </button>
+  </div>
+</app-ui-animated-dialog>
