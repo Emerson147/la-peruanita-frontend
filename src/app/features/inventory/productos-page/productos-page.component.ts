@@ -692,6 +692,30 @@ export class ProductosPageComponent {
     }
   }
 
+  // Acciones en Lote (Bulk Actions)
+  async deleteSelectedProducts() {
+    const selectedIds = this.selectedProducts();
+    if (selectedIds.length === 0) return;
+
+    if (
+      confirm(
+        `¿Estás seguro de archivar ${selectedIds.length} productos? Esta acción los ocultará del inventario.`,
+      )
+    ) {
+      let successCount = 0;
+      for (const id of selectedIds) {
+        const success = await this.productService.deleteProduct(id);
+        if (success) successCount++;
+      }
+      
+      if (successCount < selectedIds.length) {
+        alert(`Se archivaron ${successCount} de ${selectedIds.length} productos. Algunos pudieron fallar.`);
+      }
+      
+      this.clearSelection();
+    }
+  }
+
   // Helpers para actualizar valores del formulario
   updateCost(val: string) {
     this.costPrice.set(parseFloat(val) || 0);
