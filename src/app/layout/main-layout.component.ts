@@ -127,7 +127,9 @@ export class MainLayoutComponent {
       { label: 'Metas y Logros', icon: 'emoji_events', route: '/goals' },
     ];
     if (isAdmin) {
+      items.push({ label: 'Almacenes', icon: 'store', route: '/inventario/almacenes' });
       items.push({ label: 'Usuarios', icon: 'manage_accounts', route: '/users' });
+      items.push({ label: 'Ajustes', icon: 'settings', route: '/settings' });
     }
     return items;
   });
