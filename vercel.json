@@ -3,8 +3,7 @@
   "outputDirectory": "dist/sistema-master/browser",
   "framework": "angular",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "http://161.35.96.206:8080/api/:path*" },
+    { "source": "/api/:path*", "destination": "http://178.128.156.170:8081/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
-
