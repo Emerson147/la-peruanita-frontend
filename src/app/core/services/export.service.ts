@@ -161,7 +161,7 @@ export class ExportService {
       const pageCount = (doc as any).internal.getNumberOfPages();
       doc.setFontSize(8);
       doc.setTextColor(168, 162, 158); // stone-400
-      doc.text(`DenRaf • Página ${pageCount} • ${data.length} registros`, 14, doc.internal.pageSize.height - 10);
+      doc.text(`Calzados La Peruanita • Página ${pageCount} • ${data.length} registros`, 14, doc.internal.pageSize.height - 10);
 
       const fileName = `${options.filename || 'reporte'}.pdf`;
       doc.save(fileName);
@@ -233,7 +233,7 @@ export class ExportService {
         </head>
         <body>
           <div class="header">
-            <h2>DenRaf</h2>
+            <h2>Calzados La Peruanita</h2>
             <p>Sistema de Gestión</p>
             <p>RUC: 12345678901</p>
           </div>
@@ -313,7 +313,7 @@ export class ExportService {
 
       this.exportToExcel(kpisData, filename, 'KPIs');
     } else {
-      this.exportToPDF([], [], { filename, title: 'Dashboard - DenRaf' });
+      this.exportToPDF([], [], { filename, title: 'Dashboard - Calzados La Peruanita' });
     }
   }
 }

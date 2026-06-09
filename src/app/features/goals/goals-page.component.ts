@@ -21,7 +21,7 @@ import { UiPageHeaderComponent } from '../../shared/ui/ui-page-header/ui-page-he
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <app-ui-page-header
             title="Metas y logros"
-            [subtitle]="'DenRaf · Desempeño de ' + (currentUser()?.nombre ?? 'Usuario')"
+            [subtitle]="'Calzados La Peruanita · Desempeño de ' + (currentUser()?.nombre ?? 'Usuario')"
             materialIcon="emoji_events"
           />
           <!-- Racha badge -->

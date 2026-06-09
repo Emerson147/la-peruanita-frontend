@@ -387,7 +387,7 @@ export class UiExportMenuComponent {
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(...colors.stone500);
-          doc.text('DenRaf · Reporte detallado de datos', margin.left, y);
+          doc.text('Calzados La Peruanita · Reporte detallado de datos', margin.left, y);
           y += 10;
 
           drawLine(y, colors.stone300, 0.5);
@@ -507,7 +507,7 @@ export class UiExportMenuComponent {
             doc.setLineWidth(0.2);
             doc.line(14, ph - 12, pw - 14, ph - 12);
 
-            doc.text(`DenRaf - ${reportTitle} - Exportado`, 14, ph - 8);
+            doc.text(`Calzados La Peruanita - ${reportTitle} - Exportado`, 14, ph - 8);
             doc.text(`Página ${i} de ${pageCount}`, pw - 35, ph - 8);
           }
 

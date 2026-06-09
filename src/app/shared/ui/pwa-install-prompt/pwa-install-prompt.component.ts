@@ -20,7 +20,7 @@ import { CommonModule } from '@angular/common';
                 📊
               </div>
               <div class="flex-1">
-                <h3 class="text-lg font-bold mb-1">Instalar DenRaf</h3>
+                <h3 class="text-lg font-bold mb-1">Instalar La Peruanita</h3>
                 <p class="text-sm text-stone-300 leading-relaxed">
                   Accede más rápido y trabaja sin conexión
                 </p>

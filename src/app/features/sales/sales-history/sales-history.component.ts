@@ -589,7 +589,7 @@ export class SalesHistoryComponent {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...colors.stone500);
-    doc.text('DenRaf · Reporte detallado de transacciones', margin.left, y);
+    doc.text('Calzados La Peruanita · Reporte detallado de transacciones', margin.left, y);
     y += 10;
 
     // Línea separadora elegante
@@ -1033,7 +1033,7 @@ export class SalesHistoryComponent {
       doc.setFontSize(7);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...colors.stone400);
-      doc.text(`DenRaf · Historial de Ventas · ${periodLabel}`, margin.left, ph - 10);
+      doc.text(`Calzados La Peruanita · Historial de Ventas · ${periodLabel}`, margin.left, ph - 10);
       doc.text(`Página ${p} de ${totalPages}`, pw - margin.right, ph - 10, { align: 'right' });
     }
 
