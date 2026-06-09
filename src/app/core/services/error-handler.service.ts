@@ -17,7 +17,7 @@ export class ErrorHandlerService {
   private toastService = inject(ToastService);
   private logger = inject(LoggerService);
   
-  private readonly CRITICAL_ERRORS_KEY = 'denraf_critical_errors';
+  private readonly CRITICAL_ERRORS_KEY = 'calzados_la_peruanita_critical_errors';
   private errorLogs: ErrorLog[] = [];
   private readonly MAX_LOGS = 100;
 

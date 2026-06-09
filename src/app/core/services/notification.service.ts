@@ -26,7 +26,7 @@ export interface Notification {
 })
 export class NotificationService {
   private logger = inject(LoggerService);
-  private readonly STORAGE_KEY = 'denraf-notifications';
+  private readonly STORAGE_KEY = 'calzados_la_peruanita-notifications';
   private notifications = signal<Notification[]>([]);
   
   /** Track deduplication keys for this session */

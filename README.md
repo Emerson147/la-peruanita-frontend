@@ -1,4 +1,4 @@
-# 🛒 Importaciones DENRAF — Sistema de Gestión de Ventas e Inventario
+# 🛒 Calzados La Peruanita — Sistema de Gestión de Ventas e Inventario
 
 > Sistema POS (Point of Sale) completo con gestión de inventario, reportes, modo offline y soporte PWA, construido con Angular 21 y Supabase.
 
@@ -23,7 +23,7 @@
 
 ## 📌 Descripción General
 
-**Importaciones DENRAF** es un sistema de gestión empresarial orientado a pequeños y medianos negocios de venta e importación. Permite administrar productos, registrar ventas mediante un punto de venta (POS) intuitivo, controlar el inventario, gestionar clientes, generar reportes exportables y visualizar métricas del negocio en tiempo real.
+**Calzados La Peruanita** es un sistema de gestión empresarial orientado a pequeños y medianos negocios de venta e importación. Permite administrar productos, registrar ventas mediante un punto de venta (POS) intuitivo, controlar el inventario, gestionar clientes, generar reportes exportables y visualizar métricas del negocio en tiempo real.
 
 La aplicación opera con soporte **offline-first** gracias a IndexedDB y Service Workers, sincronizando los datos con la nube (Supabase/PostgreSQL) cuando la conexión es restaurada.
 
@@ -210,8 +210,8 @@ sistema-master/
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/Emerson147/importaciones-denraf.git
-cd importaciones-denraf
+git clone https://github.com/Emerson147/la-peruanita-frontend.git
+cd la-peruanita-frontend
 
 # 2. Instalar dependencias
 npm install

@@ -21,7 +21,7 @@ import { LoggerService } from './logger.service';
   providedIn: 'root'
 })
 export class StorageService {
-  private readonly PREFIX = 'denraf_';
+  private readonly PREFIX = 'calzados_la_peruanita_';
   private logger = inject(LoggerService);
 
   /**
