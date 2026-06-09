@@ -124,6 +124,7 @@ export class InventoryMovementService {
       const payload = {
         ...data,
         type: type,
+        varianteId: data.variantId, // Enviar como varianteId
         unitCost: data.cost // Adaptar de `cost` a `unitCost` para compatibilidad backend
       };
 

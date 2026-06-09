@@ -3,9 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InventoryMovementService } from '../../../core/services/inventory-movement.service';
 import { ProductService } from '../../../core/services/product.service';
+import { AlmacenService } from '../../../core/services/almacen.service';
 import { BackendAuthService } from '../../../core/services/backend-auth.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { InventoryMovement, Product } from '../../../core/models';
+import { InventoryMovement, Product, Almacen } from '../../../core/models';
 import { UiAnimatedDialogComponent } from '../../../shared/ui/ui-animated-dialog/ui-animated-dialog.component';
 import { UiPageHeaderComponent } from '../../../shared/ui/ui-page-header/ui-page-header.component';
 
@@ -20,6 +21,7 @@ import { UiPageHeaderComponent } from '../../../shared/ui/ui-page-header/ui-page
 export class InventoryMovementsComponent {
   public movementService = inject(InventoryMovementService);
   private productService = inject(ProductService);
+  private almacenService = inject(AlmacenService);
   private authService = inject(BackendAuthService);
   private toastService = inject(ToastService);
 
@@ -30,6 +32,7 @@ export class InventoryMovementsComponent {
   // Formulario de nuevo movimiento
   movementType = signal<'entrada' | 'ajuste'>('entrada');
   selectedProductId = signal<string>('');
+  selectedAlmacenId = signal<string>('');
   variantQuantities = signal<{ [variantId: string]: number | null }>({}); // Nuevo: Multi-variantes
   quantity = signal<number>(1);
   reason = signal<string>('');
@@ -61,6 +64,7 @@ export class InventoryMovementsComponent {
 
   // Data
   products = this.productService.products;
+  almacenes = signal<Almacen[]>([]);
   loading = computed(() => this.movementService.isLoading());
 
   // Movimientos filtrados locales (solo búsquedas de texto en la vista actual)
@@ -99,6 +103,20 @@ export class InventoryMovementsComponent {
 
   ngOnInit() {
     this.movementService.fetchPaginatedMovements(0, this.movementService.pageSize());
+    this.loadAlmacenes();
+  }
+
+  loadAlmacenes() {
+    this.almacenService.getAlmacenes().subscribe({
+      next: (data) => {
+        this.almacenes.set(data);
+        if (data.length > 0) {
+          // Auto-seleccionar el primer almacén disponible
+          this.selectedAlmacenId.set(data[0].id!);
+        }
+      },
+      error: (err) => console.error('Error cargando almacenes', err)
+    });
   }
 
   // --- PAGINACIÓN ---
@@ -158,6 +176,11 @@ export class InventoryMovementsComponent {
       return;
     }
 
+    if (!this.selectedAlmacenId()) {
+      this.toastService.error('Selecciona un almacén');
+      return;
+    }
+
     // Lógica para procesar una o múltiples variantes
     const variants = this.productVariants();
     let movementsToCreate: any[] = [];
@@ -172,8 +195,8 @@ export class InventoryMovementsComponent {
         
         let finalQty = inputVal;
         if (this.movementType() === 'ajuste') {
-          finalQty = inputVal - variant.stock;
-          if (finalQty === 0) continue; // Sin cambios para esta variante
+          if (inputVal === variant.stock) continue; // Sin cambios para esta variante
+          finalQty = inputVal; // El backend espera el stock absoluto final, no la diferencia
         } else {
           if (inputVal <= 0) continue; // Entrada debe ser mayor a 0
         }
@@ -185,7 +208,9 @@ export class InventoryMovementsComponent {
           variantId: variant.id,
           size: variant.size,
           color: variant.color,
+          almacenOrigenId: this.selectedAlmacenId(),
           quantity: finalQty,
+          cost: this.movementType() === 'entrada' ? this.cost() : 0,
         });
       }
       
@@ -197,15 +222,15 @@ export class InventoryMovementsComponent {
       // Producto sin variantes
       let finalQty = this.quantity();
       if (this.movementType() === 'ajuste') {
-        finalQty = this.quantity() - product.stock;
-        if (finalQty === 0) {
+        if (finalQty === product.stock) {
           this.toastService.error('El nuevo stock físico es igual al actual. No hay ajuste que realizar.');
           return;
         }
-        if (this.quantity() < 0) {
+        if (finalQty < 0) {
           this.toastService.error('El stock físico no puede ser negativo');
           return;
         }
+        // finalQty se mantiene como el valor absoluto
       } else {
         if (this.quantity() <= 0) {
           this.toastService.error('La cantidad recibida debe ser mayor a 0');
@@ -216,7 +241,9 @@ export class InventoryMovementsComponent {
       movementsToCreate.push({
         productId: product.id,
         productName: product.name,
+        almacenOrigenId: this.selectedAlmacenId(),
         quantity: finalQty,
+        cost: this.movementType() === 'entrada' ? this.cost() : 0,
       });
     }
 
@@ -278,7 +305,7 @@ export class InventoryMovementsComponent {
        let delta = 0;
        const finalQty = movementsToCreate[0].quantity;
        if (this.movementType() === 'ajuste') {
-         delta = finalQty; // Para ajuste, movementsToCreate ya tiene la diferencia
+         delta = finalQty - product.stock; // Calculamos el delta solo para actualizar el estado local
        } else {
          delta = finalQty;
        }
@@ -298,6 +325,7 @@ export class InventoryMovementsComponent {
           payload.totalCost = payload.cost * Math.abs(payload.quantity);
           await this.movementService.registerEntrada(payload, true); // true = skipStockUpdate individual
         } else {
+          payload.totalCost = 0; // Para ajustes el costo total es 0
           await this.movementService.registerAjuste(payload, true); // true = skipStockUpdate individual
         }
       }
@@ -327,6 +355,7 @@ export class InventoryMovementsComponent {
    */
   private resetForm() {
     this.selectedProductId.set('');
+    // No reseteamos el selectedAlmacenId para que mantenga el anterior (útil para varios registros)
     this.variantQuantities.set({});
     this.quantity.set(1);
     this.reason.set('');
