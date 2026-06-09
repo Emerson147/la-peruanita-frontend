@@ -105,7 +105,8 @@
             <thead>
               <tr class="text-stone-400 dark:text-stone-500 text-[10px] font-bold tracking-[0.2em] uppercase">
                 <th class="px-8 py-6">Sucursal</th>
-                <th class="px-8 py-6">Ubicación</th>
+                <th class="px-8 py-6 hidden lg:table-cell">Ubicación</th>
+                <th class="px-8 py-6 text-center">Capacidad</th>
                 <th class="px-8 py-6 text-center">Estado</th>
                 <th class="px-8 py-6 text-right sticky right-0 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md">Gestión</th>
               </tr>
@@ -118,22 +119,30 @@
                   <td class="px-8 py-5">
                     <div class="flex items-center gap-4">
                       <div class="h-12 w-12 rounded-2xl bg-stone-100 dark:bg-stone-800 overflow-hidden shrink-0 border border-stone-200/50 dark:border-stone-700/50 relative shadow-sm transition-all group-hover:shadow-md flex items-center justify-center text-stone-400 dark:text-stone-500 group-hover:text-stone-900 dark:group-hover:text-stone-100">
-                        <span class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform duration-500">store</span>
+                        <span class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform duration-500">
+                          {{ almacen.nombre.toLowerCase().includes('almacen') ? 'warehouse' : 'storefront' }}
+                        </span>
                       </div>
-                      <div class="flex flex-col">
+                      <div class="flex flex-col gap-1">
                         <h3 class="text-[13px] font-bold text-stone-900 dark:text-stone-100 group-hover:text-stone-700 dark:group-hover:text-stone-300 transition-colors cursor-pointer leading-tight" (click)="openEditModal(almacen)">
                           {{ almacen.nombre }}
                         </h3>
-                        <span class="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1">
-                          <span class="material-symbols-outlined text-[12px]">qr_code_2</span>
-                          {{ almacen.id | slice:0:8 }}
-                        </span>
+                        <div class="flex items-center gap-2 mt-0.5">
+                          <span class="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border"
+                            [ngClass]="almacen.nombre.toLowerCase().includes('almacen') || almacen.nombre.toLowerCase().includes('almacén') ? 'bg-indigo-50 border-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-800/30 dark:text-indigo-400' : 'bg-orange-50 border-orange-100 text-orange-600 dark:bg-orange-900/20 dark:border-orange-800/30 dark:text-orange-400'">
+                            {{ almacen.nombre.toLowerCase().includes('almacen') || almacen.nombre.toLowerCase().includes('almacén') ? 'Distribución' : 'Tienda Física' }}
+                          </span>
+                          <span class="text-[9px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[10px]">tag</span>
+                            {{ almacen.id | slice:0:8 }}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </td>
                   
                   <!-- Dirección -->
-                  <td class="px-8 py-5">
+                  <td class="px-8 py-5 hidden lg:table-cell">
                     <div class="flex flex-col gap-1">
                       <span class="text-xs font-bold text-stone-800 dark:text-stone-200">
                         {{ almacen.direccion || 'No especificada' }}
@@ -142,6 +151,21 @@
                         <span class="material-symbols-outlined text-[12px]">place</span>
                         Dirección física
                       </span>
+                    </div>
+                  </td>
+                  
+                  <!-- Capacidad Mock -->
+                  <td class="px-8 py-5">
+                    <div class="flex flex-col gap-1.5 w-32 mx-auto">
+                      <div class="flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-stone-900 dark:text-stone-100">{{ (idx * 342) + 120 }} SKUs</span>
+                        <span class="text-stone-400">{{ ((idx * 342) + 120) > 400 ? '85%' : '30%' }}</span>
+                      </div>
+                      <div class="h-1.5 w-full bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-1000"
+                          [ngClass]="((idx * 342) + 120) > 400 ? 'bg-amber-500 w-[85%]' : 'bg-emerald-500 w-[30%]'">
+                        </div>
+                      </div>
                     </div>
                   </td>
                   

@@ -8,6 +8,7 @@ export interface VentaRequest {
   userId?: string; // UUID
   vendedorId?: string; // UUID
   customerId?: string; // UUID (opcional)
+  almacenId: string; // UUID del almacén desde donde se vende
   items: VentaItemRequest[];
   discount?: number;
   tax?: number;

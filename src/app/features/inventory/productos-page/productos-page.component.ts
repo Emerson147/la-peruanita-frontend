@@ -22,6 +22,7 @@ import {
   UiLabelComponent,
   UiPageHeaderComponent,
 } from '../../../shared/ui';
+import { ToastService } from '../../../core/services/toast.service';
 import { ImageFallbackDirective } from '../../../shared/directives/image-fallback.directive';
 
 @Component({
@@ -45,11 +46,22 @@ export class ProductosPageComponent {
   private productService = inject(ProductService);
   private almacenService = inject(AlmacenService);
   private cloudinary = inject(CloudinaryService);
+  private toastService = inject(ToastService);
   private destroyRef = inject(DestroyRef);
 
   // Debounce para búsqueda (Fase 2)
   private searchSubject = new Subject<string>();
   private debouncedSearch = signal('');
+
+  // 🆕 Sistema de Confirmación Custom
+  isConfirmDialogOpen = signal(false);
+  confirmData = signal<{
+    title: string;
+    message: string;
+    actionLabel: string;
+    isDestructive: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   constructor() {
     // Configurar debounce de 300ms para la búsqueda
@@ -209,6 +221,11 @@ export class ProductosPageComponent {
     }
 
     return filtered;
+  });
+
+  // 🆕 Computed: Determinar si hay filtros activos
+  hasActiveFilters = computed(() => {
+    return !!this.selectedCategory() || !!this.selectedGender() || !!this.searchQuery();
   });
 
   // Computed: Productos Paginados
@@ -679,16 +696,22 @@ export class ProductosPageComponent {
 
   async handleAction(action: string, id: string) {
     if (action === 'delete') {
-      if (
-        confirm(
-          '¿Archivar este producto? No se eliminará si tiene ventas asociadas, solo se ocultará del inventario.',
-        )
-      ) {
-        const success = await this.productService.deleteProduct(id);
-        if (!success) {
-          alert('Error al archivar el producto. Por favor, intente nuevamente.');
+      this.confirmData.set({
+        title: 'Archivar Producto',
+        message: '¿Estás seguro de archivar este producto? No se eliminará si tiene ventas asociadas, solo se ocultará del catálogo principal.',
+        actionLabel: 'Archivar Producto',
+        isDestructive: true,
+        onConfirm: async () => {
+          const success = await this.productService.deleteProduct(id);
+          if (success) {
+            this.toastService.success('Producto archivado correctamente');
+          } else {
+            this.toastService.error('Error al archivar el producto');
+          }
+          this.closeConfirmDialog();
         }
-      }
+      });
+      this.isConfirmDialogOpen.set(true);
     }
   }
 
@@ -697,23 +720,34 @@ export class ProductosPageComponent {
     const selectedIds = this.selectedProducts();
     if (selectedIds.length === 0) return;
 
-    if (
-      confirm(
-        `¿Estás seguro de archivar ${selectedIds.length} productos? Esta acción los ocultará del inventario.`,
-      )
-    ) {
-      let successCount = 0;
-      for (const id of selectedIds) {
-        const success = await this.productService.deleteProduct(id);
-        if (success) successCount++;
+    this.confirmData.set({
+      title: 'Archivar Múltiples Productos',
+      message: `¿Estás seguro de archivar ${selectedIds.length} productos? Esta acción los ocultará del catálogo principal.`,
+      actionLabel: `Archivar ${selectedIds.length} Productos`,
+      isDestructive: true,
+      onConfirm: async () => {
+        let successCount = 0;
+        for (const id of selectedIds) {
+          const success = await this.productService.deleteProduct(id);
+          if (success) successCount++;
+        }
+        
+        if (successCount === selectedIds.length) {
+          this.toastService.success(`Se archivaron ${successCount} productos correctamente`);
+        } else {
+          this.toastService.warning(`Se archivaron ${successCount} de ${selectedIds.length} productos`);
+        }
+        
+        this.clearSelection();
+        this.closeConfirmDialog();
       }
-      
-      if (successCount < selectedIds.length) {
-        alert(`Se archivaron ${successCount} de ${selectedIds.length} productos. Algunos pudieron fallar.`);
-      }
-      
-      this.clearSelection();
-    }
+    });
+    this.isConfirmDialogOpen.set(true);
+  }
+
+  closeConfirmDialog() {
+    this.isConfirmDialogOpen.set(false);
+    setTimeout(() => this.confirmData.set(null), 300); // Wait for animation
   }
 
   // Helpers para actualizar valores del formulario

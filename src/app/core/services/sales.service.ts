@@ -262,6 +262,7 @@ export class SalesService {
     
     // Sync Real en Background
     const req: VentaRequest = {
+        almacenId: "00000000-0000-0000-0000-000000000000", // Fallback para adaptador legacy
         items: newSale.items.map(i => ({ productId: i.productId, quantity: i.quantity })),
         paymentMethod: newSale.paymentMethod,
         discount: newSale.discount,

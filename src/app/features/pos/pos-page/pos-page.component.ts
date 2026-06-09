@@ -17,11 +17,12 @@ import { UiTicketComponent } from '../../../shared/ui/ui-ticket/ui-ticket.compon
 import { UiSkeletonComponent } from '../../../shared/ui';
 import { SalesService } from '../../../core/services/sales.service';
 import { ProductService } from '../../../core/services/product.service';
+import { AlmacenService } from '../../../core/services/almacen.service';
 import { BackendAuthService } from '../../../core/services/backend-auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { LoggerService } from '../../../core/services/logger.service';
 import { ClientService } from '../../../core/services/client.service';
-import { Sale, SaleItem, Product, ProductVariant, VentaRequest, Client } from '../../../core/models';
+import { Sale, SaleItem, Product, ProductVariant, VentaRequest, Client, Almacen } from '../../../core/models';
 import { UiAnimatedDialogComponent } from '../../../shared/ui/ui-animated-dialog/ui-animated-dialog.component';
 import { ImageFallbackDirective } from '../../../shared/directives/image-fallback.directive';
 import { PosPaymentFacade } from '../facades/pos-payment.facade';
@@ -30,6 +31,13 @@ export interface CartItem {
   product: Product;
   quantity: number;
   variant?: ProductVariant; // Variante seleccionada (talla + color)
+}
+
+export interface SuspendedCart {
+  id: number;
+  cart: CartItem[];
+  client: Client | null;
+  time: Date;
 }
 
 @Component({
@@ -51,6 +59,7 @@ export class PosPageComponent {
   // Servicios
   private salesService = inject(SalesService);
   private productService = inject(ProductService);
+  private almacenService = inject(AlmacenService);
   private toastService = inject(ToastService);
   private authService = inject(BackendAuthService);
   private logger = inject(LoggerService);
@@ -59,6 +68,10 @@ export class PosPageComponent {
 
   // ViewChild para enfoque automático
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
+
+  // Almacenes
+  almacenes = signal<Almacen[]>([]);
+  selectedAlmacen = signal<Almacen | null>(null);
 
   // Signals
   cart = signal<CartItem[]>([]);
@@ -71,6 +84,13 @@ export class PosPageComponent {
   toastIcon = signal('check_circle');
   showMobileCart = signal(false); // 📱 Control del bottom sheet móvil
   showClearConfirm = signal(false); // 🗑️ Confirmación para vaciar
+
+  // ⏸️ Ventas Suspendidas (Hold)
+  suspendedCarts = signal<SuspendedCart[]>([]);
+  showSuspendedModal = signal(false);
+
+  // 🎵 Contexto de Audio
+  private audioCtx: AudioContext | null = null;
 
   // 📱 Touch variables para Bottom Sheet
   touchStartY = 0;
@@ -104,6 +124,19 @@ export class PosPageComponent {
 
     // 🎯 Auto-detectar tipo de venta basado en el día
     this.autoDetectSaleType();
+
+    // 📦 Cargar almacenes y autoseleccionar
+    this.almacenService.getAlmacenes().subscribe({
+      next: (data) => {
+        const activos = data.filter(a => a.activo);
+        this.almacenes.set(activos);
+        // Autoseleccionar el primer almacén activo por defecto
+        if (activos.length > 0) {
+          this.selectedAlmacen.set(activos[0]);
+        }
+      },
+      error: (err) => this.logger.error('Error cargando almacenes en POS', err)
+    });
   }
 
   // Auto-detectar tipo de venta por día de la semana
@@ -147,6 +180,20 @@ export class PosPageComponent {
     }
   }
 
+  @HostListener('window:keydown.f8', ['$event'])
+  onF8Key(event: Event) {
+    event.preventDefault();
+    this.suspendCurrentCart();
+  }
+
+  @HostListener('window:keydown.f9', ['$event'])
+  onF9Key(event: Event) {
+    event.preventDefault();
+    if (this.suspendedCarts().length > 0) {
+      this.showSuspendedModal.set(true);
+    }
+  }
+
   @HostListener('window:keydown.enter', ['$event'])
   onEnterKey(event: Event) {
     const target = event.target as HTMLElement;
@@ -166,6 +213,8 @@ export class PosPageComponent {
       this.variantSelectorOpen.set(false);
     } else if (this.showTicket()) {
       this.showTicket.set(false);
+    } else if (this.showSuspendedModal()) {
+      this.showSuspendedModal.set(false);
     } else {
       this.clearFilters();
     }
@@ -209,10 +258,59 @@ export class PosPageComponent {
     if (productByBarcode) {
       const variant = productByBarcode.variants?.find((v) => v.barcode === scannedCode);
       this.addToCartWithVariant(productByBarcode, variant);
-      // Opcional: Sonido de "beep" exitoso podría ir aquí
+      this.playBeep('success');
     } else {
       this.toastService.warning(`No existe el código: ${scannedCode}`);
-      // Opcional: Sonido de "error" podría ir aquí
+      this.playBeep('error');
+    }
+  }
+
+  // 🎵 FEEDBACK AUDITIVO PROFESIONAL
+  private playBeep(type: 'success' | 'error' | 'action') {
+    try {
+      if (!this.audioCtx) {
+        this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      
+      // Resumir el contexto si está suspendido (políticas del navegador)
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+
+      const oscillator = this.audioCtx.createOscillator();
+      const gainNode = this.audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioCtx.destination);
+      
+      const now = this.audioCtx.currentTime;
+      
+      if (type === 'success') {
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, now); // A5
+        oscillator.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+        gainNode.gain.setValueAtTime(0.1, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        oscillator.start(now);
+        oscillator.stop(now + 0.1);
+      } else if (type === 'action') {
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(600, now);
+        gainNode.gain.setValueAtTime(0.05, now);
+        gainNode.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        oscillator.start(now);
+        oscillator.stop(now + 0.1);
+      } else {
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(300, now);
+        oscillator.frequency.exponentialRampToValueAtTime(150, now + 0.2);
+        gainNode.gain.setValueAtTime(0.1, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        oscillator.start(now);
+        oscillator.stop(now + 0.2);
+      }
+    } catch (e) {
+      // Ignorar si el navegador bloquea el audio
     }
   }
 
@@ -345,9 +443,11 @@ export class PosPageComponent {
           this.toastService.success(
             `${productByBarcode.name} - ${variant.size} ${variant.color} agregado`
           );
+          this.playBeep('success');
           return;
         }
       }
+      this.playBeep('error');
     }
   }
 
@@ -369,6 +469,7 @@ export class PosPageComponent {
   addToCart(product: Product) {
     if (product.stock === 0) {
       this.toastService.error('Producto sin stock');
+      this.playBeep('error');
       return;
     }
 
@@ -388,6 +489,7 @@ export class PosPageComponent {
     // Verificar stock de la variante específica si existe
     if (variant && variant.stock === 0) {
       this.toastService.error('Variante sin stock');
+      this.playBeep('error');
       return;
     }
 
@@ -400,6 +502,7 @@ export class PosPageComponent {
       const maxStock = variant ? variant.stock : product.stock;
       if (existingItem.quantity >= maxStock) {
         this.toastService.warning('Stock máximo alcanzado');
+        this.playBeep('error');
         return;
       }
       this.updateQuantity(product.id, variant?.id, 1);
@@ -407,6 +510,7 @@ export class PosPageComponent {
       this.cart.update((cart) => [...cart, { product, quantity: 1, variant }]);
       const variantLabel = variant ? ` (${variant.size} - ${variant.color})` : '';
       this.toastService.success(`Producto agregado${variantLabel}`);
+      this.playBeep('success');
     }
 
     // Cerrar el selector
@@ -446,9 +550,11 @@ export class PosPageComponent {
         const maxStock = item.variant ? item.variant.stock : item.product.stock;
         if (newQuantity > maxStock) {
           this.toastService.warning('Stock insuficiente');
+          this.playBeep('error');
           return item;
         }
 
+        this.playBeep('action');
         return { ...item, quantity: newQuantity };
       });
     });
@@ -474,7 +580,63 @@ export class PosPageComponent {
         return true;
       })
     );
+    this.playBeep('action');
     this.toastService.info('Producto eliminado');
+  }
+
+  // ⏸️ SISTEMA DE SUSPENDER CARRITO (HOLD CART)
+  suspendCurrentCart() {
+    if (this.cart().length === 0) return;
+    
+    this.suspendedCarts.update(carts => [
+      ...carts,
+      {
+        id: Date.now(),
+        cart: [...this.cart()],
+        client: this.selectedClient(),
+        time: new Date()
+      }
+    ]);
+    
+    // Limpiar carrito actual
+    this.cart.set([]);
+    this.selectedClient.set(null);
+    this.clientName = 'Cliente';
+    this.clientPhone = '';
+    this.toastService.success('Venta suspendida (Pausa)');
+    this.playBeep('action');
+  }
+
+  resumeSuspendedCart(holdId: number) {
+    const hold = this.suspendedCarts().find(c => c.id === holdId);
+    if (!hold) return;
+
+    // Si hay un carrito actual, lo suspendemos automáticamente
+    if (this.cart().length > 0) {
+      this.suspendCurrentCart();
+    }
+
+    // Cargar la venta suspendida
+    this.cart.set([...hold.cart]);
+    this.selectedClient.set(hold.client);
+    if (hold.client) {
+      this.clientName = hold.client.name;
+      this.clientPhone = hold.client.phone;
+    }
+
+    // Eliminarlo de los suspendidos
+    this.deleteSuspendedCart(holdId);
+    this.showSuspendedModal.set(false);
+    this.toastService.success('Venta recuperada');
+    this.playBeep('action');
+  }
+
+  deleteSuspendedCart(holdId: number) {
+    this.suspendedCarts.update(carts => carts.filter(c => c.id !== holdId));
+  }
+
+  getSuspendedCartTotal(cart: CartItem[]): number {
+    return cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   }
 
   clearCart() {
@@ -484,6 +646,7 @@ export class PosPageComponent {
   confirmClearCart() {
     this.cart.set([]);
     this.showClearConfirm.set(false);
+    this.playBeep('action');
     this.toastService.info('Carrito vaciado exitosamente');
   }
 
@@ -568,14 +731,27 @@ export class PosPageComponent {
     const vendedorUuid = loggedUser?.id || "908c700f-a335-4341-be6f-a62bfd7daa10"; // Fallback por seguridad
 
     // 🚀 NUEVA ESTRUCTURA: Payload JSON para Spring Boot Backend (VentaController)
+    // Extraemos el almacenId de los items del carrito para auto-detectar su origen.
+    // Si no tiene, hacemos fallback al almacén seleccionado en la UI.
+    const cartItems = this.cart();
+    const detectedAlmacenId = cartItems.length > 0 && cartItems[0].variant?.almacenId 
+        ? cartItems[0].variant.almacenId 
+        : this.selectedAlmacen()?.id;
+
+    if (!detectedAlmacenId) {
+      this.toastService.error('No se pudo detectar el almacén de origen para esta venta');
+      return;
+    }
+
     const ventaRequest: VentaRequest = {
       vendedorId: vendedorUuid, 
       customerId: this.selectedClient()?.id, // Vínculo BD
+      almacenId: detectedAlmacenId, // Vínculo BD (Auto-detectado por el item)
       paymentMethod: this.getPaymentMethodType(),
       discount: this.discount,
       tax: this.tax(),
       notes: this.amountPaid > 0 ? `Pagó: S/ ${this.amountPaid}, Cambio: S/ ${this.amountPaid - total}` : undefined,
-      items: this.cart().map(item => ({
+      items: cartItems.map(item => ({
         productId: item.product.id,
         varianteId: item.variant?.id,
         quantity: item.quantity
