@@ -187,113 +187,196 @@ export class ExportService {
    * Genera ticket de venta para impresión térmica (80mm)
    */
   printTicket(sale: any): void {
-    try {
-      console.log('🖨️ Imprimiendo ticket:', sale);
-      
-      // Crear ventana de impresión
-      const printWindow = window.open('', '_blank', 'width=300,height=600');
-      
-      if (!printWindow) {
-        alert('Por favor permite ventanas emergentes para imprimir');
-        return;
-      }
+  try {
+    const printWindow = window.open('', '_blank', 'width=1000,height=800,left=200,top=100');
 
-      // HTML del ticket (80mm = ~300px)
-      const ticketHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Ticket #${sale.saleNumber}</title>
-          <style>
-            @media print {
-              @page { margin: 0; size: 80mm auto; }
-              body { margin: 0; }
+    if (!printWindow) {
+      alert('Por favor permite ventanas emergentes para imprimir');
+      return;
+    }
+
+    const ticketHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Boleta Electrónica #${sale.saleNumber}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #333;
+            background: #f4f4f4;
+          }
+          .invoice-container {
+            background: #fff;
+            padding: 40px;
+            max-width: 900px;
+            margin: 20px auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+          }
+          .header { display: flex; justify-content: space-between; margin-bottom: 25px; }
+          .company-info h1 { font-size: 24px; color: #111; margin-bottom: 4px; letter-spacing: 1px; text-transform: uppercase; font-weight: 900;}
+          .company-info p { font-size: 13px; color: #555; margin-bottom: 3px; }
+          .invoice-box { border: 2px solid #111; text-align: center; padding: 15px; border-radius: 8px; min-width: 250px; background: #fafafa; }
+          .invoice-box h2 { font-size: 15px; margin: 8px 0; letter-spacing: 1px; }
+          .invoice-box p { font-size: 20px; font-weight: bold; margin: 0; color: #d32f2f; }
+          .invoice-box p.ruc { font-size: 16px; color: #111; margin-bottom: 3px; }
+          
+          .customer-info { border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 25px; display: flex; flex-wrap: wrap; gap: 15px; background: #fdfdfd; }
+          .customer-item { flex: 1 1 45%; }
+          .customer-item span.label { font-weight: 800; font-size: 11px; color: #555; display: block; text-transform: uppercase; margin-bottom: 3px; }
+          .customer-item span.value { font-size: 14px; color: #111; font-weight: 500; }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1px solid #ddd; }
+          th { background: #111; text-align: left; padding: 10px; font-size: 12px; color: #fff; text-transform: uppercase; border-bottom: 2px solid #111; }
+          td { padding: 10px; font-size: 14px; border-bottom: 1px solid #eee; vertical-align: top; color: #222; }
+          .right { text-align: right; }
+          
+          .totals-wrapper { display: flex; justify-content: flex-end; }
+          .totals-box { width: 320px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
+          .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid #eee; color: #444; }
+          .totals-row.grand-total { font-size: 18px; font-weight: 900; border-bottom: none; border-top: 2px solid #111; padding-top: 12px; margin-top: 4px; color: #111; }
+          
+          .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; }
+          .qr-placeholder { width: 90px; height: 90px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; border: 1px solid #ccc; padding: 5px; background: #fff;}
+          .qr-placeholder img { width: 100%; height: 100%; object-fit: contain; }
+
+          @media print {
+            @page { size: A4; margin: 0; } 
+            body { background: #fff; }
+            .invoice-container { 
+              margin: 0; 
+              padding: 10mm; /* REBAJADO A 1CM PARA APROVECHAR LA HOJA AL MÁXIMO */
+              box-shadow: none; 
+              max-width: 100%; 
+              border: none;
             }
-            body {
-              font-family: 'Courier New', monospace;
-              font-size: 12px;
-              width: 300px;
-              margin: 0 auto;
-              padding: 10px;
-            }
-            .header { text-align: center; margin-bottom: 15px; border-bottom: 2px dashed #000; padding-bottom: 10px; }
-            .header h2 { margin: 5px 0; font-size: 18px; }
-            .header p { margin: 3px 0; font-size: 10px; }
-            .info { margin: 10px 0; font-size: 11px; }
-            .items { margin: 15px 0; }
-            .item { display: flex; justify-content: space-between; margin: 5px 0; }
-            .item-name { flex: 1; }
-            .item-price { font-weight: bold; }
-            .totals { border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; }
-            .total-row { display: flex; justify-content: space-between; margin: 5px 0; }
-            .total-row.grand { font-size: 16px; font-weight: bold; border-top: 2px solid #000; padding-top: 10px; margin-top: 10px; }
-            .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 2px dashed #000; padding-top: 10px; }
-          </style>
-        </head>
-        <body>
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
           <div class="header">
-            <h2>Calzados La Peruanita</h2>
-            <p>Sistema de Gestión</p>
-            <p>RUC: 12345678901</p>
+          <div class="company-info">
+            <h1>${sale.businessName || 'CALZADOS LA PERUANITA'}</h1>
+            <p><strong>Razón Social:</strong> Inversiones Zen S.A.C.</p>
+            <p><strong>Dirección:</strong> ${sale.address || 'Jr. La Moda 123, Huancayo - Perú'}</p>
+            <p><strong>Teléfono:</strong> (064) 123-456</p>
           </div>
-          
-          <div class="info">
-            <p><strong>Ticket:</strong> #${sale.saleNumber}</p>
-            <p><strong>Fecha:</strong> ${new Date(sale.saleDate).toLocaleString('es-PE')}</p>
-            <p><strong>Cliente:</strong> ${sale.customer?.name || 'Cliente General'}</p>
+          <div class="invoice-box">
+            <p class="ruc">R.U.C. ${sale.ruc || '20123456789'}</p>
+            <h2>BOLETA DE VENTA ELECTRÓNICA</h2>
+            <p>${sale.saleNumber}</p>
           </div>
-          
-          <div class="items">
-            <p style="border-bottom: 1px solid #000; padding-bottom: 5px; font-weight: bold;">ITEMS</p>
+        </div>
+
+        <div class="customer-info">
+          <div class="customer-item">
+            <span class="label">Señor(es) / Cliente</span>
+            <span class="value">${sale.customer?.name && sale.customer.name !== 'Cliente' ? sale.customer.name : 'Público General'}</span>
+          </div>
+          <div class="customer-item">
+            <span class="label">DNI / Celular</span>
+            <span class="value">${sale.customer?.phone || '---'}</span>
+          </div>
+          <div class="customer-item">
+            <span class="label">Fecha de Emisión</span>
+            <span class="value">${new Date(sale.date || new Date()).toLocaleDateString('es-PE')} ${new Date(sale.date || new Date()).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <div class="customer-item">
+            <span class="label">Condición de Pago</span>
+            <span class="value">${sale.paymentMethod ? sale.paymentMethod.toUpperCase() : 'CONTADO'}</span>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 10%">Cant.</th>
+              <th style="width: 50%">Descripción del Producto</th>
+              <th style="width: 20%" class="right">Precio Unit.</th>
+              <th style="width: 20%" class="right">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
             ${sale.items.map((item: any) => `
-              <div class="item">
-                <span class="item-name">${item.quantity}x ${item.productId}</span>
-                <span class="item-price">S/ ${(item.unitPrice * item.quantity).toFixed(2)}</span>
-              </div>
+              <tr>
+                <td>${item.quantity}</td>
+                <td>
+                  <strong>${item.productName || item.productId}</strong>
+                  ${item.size || item.color ? `
+                    <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                      ${item.size ? `Talla: ${item.size}` : ''}
+                      ${item.size && item.color ? ' | ' : ''}
+                      ${item.color ? `Color: ${item.color}` : ''}
+                    </div>
+                  ` : ''}
+                </td>
+                <td class="right">S/ ${item.unitPrice.toFixed(2)}</td>
+                <td class="right">S/ ${(item.unitPrice * item.quantity).toFixed(2)}</td>
+              </tr>
             `).join('')}
-          </div>
-          
-          <div class="totals">
-            <div class="total-row">
-              <span>Subtotal:</span>
+          </tbody>
+        </table>
+
+        <div class="totals-wrapper">
+          <div class="totals-box">
+            <div class="totals-row">
+              <span>Op. Gravadas</span>
               <span>S/ ${sale.subtotal.toFixed(2)}</span>
             </div>
+            <div class="totals-row">
+              <span>IGV (18%)</span>
+              <span>S/ ${(sale.total - sale.subtotal).toFixed(2)}</span>
+            </div>
             ${sale.discount > 0 ? `
-              <div class="total-row">
-                <span>Descuento:</span>
+              <div class="totals-row" style="color: red;">
+                <span>Descuento</span>
                 <span>- S/ ${sale.discount.toFixed(2)}</span>
               </div>
             ` : ''}
-            <div class="total-row grand">
-              <span>TOTAL:</span>
+            <div class="totals-row grand-total">
+              <span>Total a Pagar</span>
               <span>S/ ${sale.total.toFixed(2)}</span>
             </div>
           </div>
-          
-          <div class="footer">
-            <p>¡Gracias por su compra!</p>
-            <p>${new Date().toLocaleDateString('es-PE')}</p>
+        </div>
+
+        <div class="footer">
+          <div class="qr-placeholder">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sale.ruc || '20123456789')}|03|${sale.saleNumber}|${sale.total}" alt="QR Code">
           </div>
-          
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(() => window.close(), 500);
-            };
-          </script>
-        </body>
-        </html>
-      `;
-      
-      printWindow.document.write(ticketHTML);
-      printWindow.document.close();
-      
-    } catch (error) {
-      console.error('Error imprimiendo ticket:', error);
-      alert('Error al generar el ticket de impresión');
-    }
+          <p>Representación impresa de la Boleta de Venta Electrónica</p>
+          <p>Consulte su comprobante en <strong>www.laperuanita.pe/comprobantes</strong></p>
+          <p style="margin-top: 10px; font-weight: bold; color: #000; font-size: 14px;">¡Gracias por su compra!</p>
+        </div>
+        </div>
+
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(ticketHTML);
+    printWindow.document.close();
+
+    printWindow.focus();
+    
+    // Le decimos a la ventana que se cierre SOLA después de que el usuario termine en el diálogo
+    printWindow.onafterprint = () => {
+      printWindow.close();
+    };
+
+    // Damos 500ms de gracia para que la imagen del código QR termine de cargar desde la API
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+
+  } catch (error) {
+    console.error('Error imprimiendo ticket:', error);
+    alert('Error al generar el ticket de impresión');
   }
+}
 
   /**
    * Exporta datos del dashboard (KPIs + charts)

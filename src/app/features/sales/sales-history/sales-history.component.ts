@@ -20,6 +20,7 @@ import { SalesService } from '../../../core/services/sales.service';
 import { BackendAuthService, UserDTO } from '../../../core/services/backend-auth.service';
 import { LoggerService } from '../../../core/services/logger.service';
 import { ExportService } from '../../../core/services/export.service';
+import { EscPosPrinterService } from '../../../core/services/escpos-printer.service';
 import { Sale } from '../../../core/models';
 
 @Component({
@@ -41,6 +42,7 @@ export class SalesHistoryComponent {
   private authService = inject(BackendAuthService);
   private logger = inject(LoggerService);
   private exportService = inject(ExportService);
+  escPosPrinter = inject(EscPosPrinterService);
 
   availableUsers: UserDTO[] = [];
 
@@ -157,8 +159,55 @@ export class SalesHistoryComponent {
     this.selectedSale.set(null);
   }
 
-  printTicket(sale: Sale) {
-    this.exportService.printTicket(sale);
+  // Nuevos Métodos de Impresión
+  printToPOS(sale: Sale) {
+    const saleForPrint = {
+      saleNumber: sale.saleNumber,
+      date: sale.date,
+      customer: sale.customer ? { name: sale.customer.name, phone: sale.customer.phone } : undefined,
+      items: sale.items.map(i => ({
+        quantity: i.quantity,
+        product: { name: i.productName },
+        unitPrice: i.unitPrice,
+        size: i.size,
+        color: i.color,
+        subtotal: i.unitPrice * i.quantity
+      })),
+      subtotal: sale.subtotal || sale.total,
+      discount: sale.discount || 0,
+      total: sale.total,
+      paymentMethod: sale.paymentMethod
+    };
+
+    this.escPosPrinter.printSaleTicket(saleForPrint)
+      .then(() => {
+        this.logger.log('Venta impresa en POS USB');
+      })
+      .catch((error: any) => {
+        console.error('Error al imprimir', error);
+      });
+  }
+
+  printToPDF(sale: Sale) {
+    const saleForPrint = {
+      saleNumber: sale.saleNumber,
+      date: sale.date,
+      customer: sale.customer ? { name: sale.customer.name, phone: sale.customer.phone } : undefined,
+      items: sale.items.map(i => ({
+        quantity: i.quantity,
+        productName: i.productName,
+        unitPrice: i.unitPrice,
+        size: i.size,
+        color: i.color,
+        subtotal: i.unitPrice * i.quantity
+      })),
+      subtotal: sale.subtotal || sale.total,
+      discount: sale.discount || 0,
+      total: sale.total,
+      paymentMethod: sale.paymentMethod
+    };
+    
+    this.exportService.printTicket(saleForPrint);
   }
 
   // Variables para Anulación
@@ -188,32 +237,6 @@ export class SalesHistoryComponent {
       this.restoreStock(),
     );
     if (success) this.closeCancelModal();
-  }
-
-  // Ticket Modal
-  showTicketModal = signal(false);
-  ticketSale = signal<Sale | null>(null);
-
-  reprintTicket(sale: Sale) {
-    this.ticketSale.set(sale);
-    this.showTicketModal.set(true);
-  }
-
-  closeTicketModal() {
-    this.showTicketModal.set(false);
-    this.ticketSale.set(null);
-  }
-
-  getTicketItems(sale: Sale): any[] {
-    return sale.items.map((item) => ({
-      product: { id: item.productId, name: item.productName, price: item.unitPrice },
-      quantity: item.quantity,
-    }));
-  }
-
-  getTicketNumber(saleNumber: string): number {
-    const match = saleNumber.match(/(\d+)$/);
-    return match ? parseInt(match[1], 10) : 0;
   }
 
   // Utilidades Visuales (Vendedores, Colores, Labels)
@@ -1047,6 +1070,7 @@ export class SalesHistoryComponent {
     this.logger.log('📄 PDF Zen exportado:', filename);
   }
 
+ 
 
   // exportToZenPDF() {
   //   console.log('Generando PDF Zen para las ventas...');

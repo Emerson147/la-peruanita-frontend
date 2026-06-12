@@ -11,6 +11,8 @@ import {
 import { CommonModule } from '@angular/common';
 import QRCode from 'qrcode';
 import { SettingsService } from '../../../core/services/settings.service';
+import { ExportService } from '../../../core/services/export.service';
+import { EscPosPrinterService } from '../../../core/services/escpos-printer.service';
 import { inject } from '@angular/core';
 
 export interface CartItem {
@@ -60,7 +62,7 @@ export interface CartItem {
 
         <!-- Ticket Container Clean Modern POS -->
         <div
-          class="relative z-10 w-full max-w-[380px] max-h-[95vh] flex flex-col bg-white dark:bg-[#111111] shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-printer-slide overflow-hidden rounded-3xl"
+          class="ticket-shape relative z-10 w-full max-w-[380px] max-h-[95vh] flex flex-col bg-white dark:bg-[#111111] shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-printer-slide overflow-hidden rounded-3xl"
         >
           <!-- Efecto de textura sutil de papel de fondo -->
           <div class="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none shrink-0" style="background-image: url('data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100\' height=\'100\' filter=\'url(%23noise)\'/%3E%3C/svg%3E');"></div>
@@ -123,7 +125,7 @@ export interface CartItem {
 
           <!-- Items (Este es el que hace scroll) -->
           <div class="px-8 py-4 text-sm space-y-3 flex-1 overflow-y-auto no-scrollbar min-h-0 relative">
-            @for (item of items; track item.product.id) {
+            @for (item of items; track $index) {
               <div
                 class="flex justify-between items-start py-2 border-b border-dashed border-stone-100 dark:border-stone-800/80 last:border-0"
               >
@@ -315,53 +317,7 @@ export interface CartItem {
         animation: slideInFromTop 0.3s ease-out;
       }
 
-      /* Estilos de impresión */
-      @media print {
-        /* Ocultar todo */
-        body * {
-          visibility: hidden;
-        }
-
-        /* Mostrar solo el ticket */
-        .ticket-shape,
-        .ticket-shape * {
-          visibility: visible;
-        }
-
-        .ticket-shape {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 80mm; /* Ancho estándar de impresora térmica */
-          box-shadow: none;
-          border-radius: 0;
-        }
-
-        /* Ocultar elementos innecesarios */
-        .no-print,
-        .no-print * {
-          display: none !important;
-        }
-
-        /* Ocultar backdrop */
-        .bg-stone-900\/40,
-        .fixed.inset-0.bg-stone-900\/40 {
-          display: none !important;
-        }
-
-        /* Ajustar márgenes para impresión */
-        @page {
-          margin: 0;
-          size: 80mm auto;
-        }
-
-        /* Asegurar que el texto sea negro puro */
-        .text-stone-900,
-        .text-stone-700,
-        .text-stone-600 {
-          color: #000 !important;
-        }
-      }
+      /* Los estilos de impresión para ticketeras térmicas (80mm) se han unificado y optimizado globalmente en src/styles.css para evitar problemas de encapsulación de Angular */
     `,
   ],
 })
@@ -381,6 +337,8 @@ export class UiTicketComponent implements OnInit, OnChanges {
   @Output() ticketSent = new EventEmitter<void>();
 
   settingsService = inject(SettingsService);
+  exportService = inject(ExportService);
+  escPosPrinter = inject(EscPosPrinterService);
 
   date = new Date();
   showSuccess = false;
@@ -435,12 +393,35 @@ export class UiTicketComponent implements OnInit, OnChanges {
   }
 
   printTicket() {
-    // Esperar un momento para que Angular actualice la vista
-    setTimeout(() => {
-      window.print();
-      this.ticketPrinted.emit();
-      this.showSuccessToast('Ticket enviado a imprimir');
-    }, 100);
+    // Reconstruir el objeto de venta para enviarlo a WebUSB
+    const saleForPrint = {
+      saleNumber: 'VENTA-' + this.ticketNumber.toString().padStart(4, '0'),
+      date: this.date,
+      customer: { name: this.clientName, phone: this.clientPhone },
+      items: this.items.map(i => ({
+        quantity: i.quantity,
+        product: { name: i.product.name },
+        unitPrice: i.product.price,
+        size: i.variant?.size,
+        color: i.variant?.color,
+        subtotal: i.product.price * i.quantity
+      })),
+      subtotal: this.subtotal,
+      discount: 0,
+      total: this.total,
+      paymentMethod: this.paymentMethod
+    };
+
+    // Imprimir el ticket crudo usando el nuevo servicio WebUSB
+    this.escPosPrinter.printSaleTicket(saleForPrint)
+      .then(() => {
+        this.ticketPrinted.emit();
+        this.showSuccessToast('Ticket enviado por USB');
+      })
+      .catch(error => {
+        console.error('Error al imprimir por USB', error);
+        this.showSuccessToast('Error al imprimir', false);
+      });
   }
 
   sendToWhatsApp() {
