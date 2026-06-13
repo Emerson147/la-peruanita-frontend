@@ -1,6 +1,6 @@
 # 🛒 Calzados La Peruanita — Sistema de Gestión de Ventas e Inventario
 
-> Sistema POS (Point of Sale) completo con gestión de inventario, reportes, modo offline y soporte PWA, construido con Angular 21 y Supabase.
+> Sistema POS (Point of Sale) completo con gestión de inventario, reportes, modo offline y soporte PWA, construido con Angular 21 y un backend robusto en Spring Boot (Java).
 
 ---
 
@@ -25,7 +25,7 @@
 
 **Calzados La Peruanita** es un sistema de gestión empresarial orientado a pequeños y medianos negocios de venta e importación. Permite administrar productos, registrar ventas mediante un punto de venta (POS) intuitivo, controlar el inventario, gestionar clientes, generar reportes exportables y visualizar métricas del negocio en tiempo real.
 
-La aplicación opera con soporte **offline-first** gracias a IndexedDB y Service Workers, sincronizando los datos con la nube (Supabase/PostgreSQL) cuando la conexión es restaurada.
+La aplicación opera con soporte **offline-first** gracias a IndexedDB y Service Workers, sincronizando los datos con la nube (API REST en Spring Boot / PostgreSQL) cuando la conexión es restaurada.
 
 ---
 
@@ -41,10 +41,12 @@ La aplicación opera con soporte **offline-first** gracias a IndexedDB y Service
 | [Angular CDK](https://material.angular.io/cdk) | 21.x | Primitivas de UI |
 | [RxJS](https://rxjs.dev) | ~7.8 | Programación reactiva |
 
-### Backend & Datos
+### Backend & Datos (Arquitectura Hexagonal)
 | Tecnología | Versión | Uso |
 |---|---|---|
-| [Supabase](https://supabase.com) | ^2.89 | BaaS — PostgreSQL en la nube, Auth |
+| [Spring Boot](https://spring.io) | 3.x | API REST, Lógica de Dominio y Seguridad |
+| [PostgreSQL](https://postgresql.org) | 16.x | Base de datos relacional principal |
+| [DigitalOcean](https://digitalocean.com) | — | Infraestructura de despliegue y VPS |
 | [IndexedDB (idb)](https://github.com/jakearchibald/idb) | ^8.0 | Almacenamiento local offline |
 | [Cloudinary](https://cloudinary.com) | — | Gestión y optimización de imágenes |
 
@@ -69,9 +71,9 @@ La aplicación sigue una **arquitectura modular por features** con los siguiente
 - **Lazy Loading** — Todas las rutas cargan sus componentes de forma diferida.
 - **Facade Pattern** — El módulo POS utiliza facades para separar la lógica de negocio de la vista.
 - **Precarga Inteligente** — `CustomPreloadingStrategy` pre-carga rutas según su prioridad asignada.
-- **Offline-First** — Los datos se persisten localmente y se sincronizan con Supabase al reconectar.
+- **Offline-First** — Los datos se persisten localmente y se sincronizan vía API REST al reconectar.
 
-```
+```text
 ┌─────────────────────────────────────────────────────┐
 │                   Angular App                       │
 │                                                     │
@@ -90,9 +92,9 @@ La aplicación sigue una **arquitectura modular por features** con los siguiente
               ┌───────────────┴──────────────┐
               │                              │
        ┌──────▼──────┐               ┌───────▼──────┐
-       │  Supabase   │               │  IndexedDB   │
-       │ (PostgreSQL │               │  (Offline /  │
-       │   + Auth)   │               │  Local DB)   │
+       │ Spring Boot │               │  IndexedDB   │
+       │ (API REST + │               │  (Offline /  │
+       │ PostgreSQL) │               │  Local DB)   │
        └─────────────┘               └──────────────┘
 ```
 
@@ -101,8 +103,8 @@ La aplicación sigue una **arquitectura modular por features** con los siguiente
 ## 🧩 Módulos y Funcionalidades
 
 ### 🔐 Autenticación (`/login`)
-- Login con email y contraseña vía Supabase Auth.
-- Guard de rutas (`authGuard`) que protege todas las páginas privadas.
+- Seguridad implementada con **Spring Security (JWT)** y **Google OAuth 2.0**.
+- Guard de rutas (`authGuard`) y HTTP Interceptors para inyección de tokens.
 - Redirección automática al dashboard tras iniciar sesión.
 
 ### 📊 Dashboard (`/dashboard`)
@@ -161,10 +163,10 @@ sistema-master/
 │   │   ├── app.routes.ts          # Definición de rutas
 │   │   ├── config/                # Configuraciones globales
 │   │   ├── core/
-│   │   │   ├── auth/              # AuthService, AuthGuard
+│   │   │   ├── auth/              # AuthService, AuthGuard, JwtInterceptor
 │   │   │   ├── models/            # Interfaces y modelos de datos
 │   │   │   ├── routing/           # CustomPreloadingStrategy
-│   │   │   ├── services/          # Servicios globales (Supabase, ventas, productos...)
+│   │   │   ├── services/          # Servicios globales (API HTTP, printer, etc.)
 │   │   │   └── theme/             # ThemeService (dark/light mode)
 │   │   ├── features/
 │   │   │   ├── auth/              # Página de Login
@@ -203,7 +205,7 @@ sistema-master/
 
 - **Node.js** >= 20.x
 - **npm** >= 11.x
-- Cuenta en [Supabase](https://supabase.com) con un proyecto configurado.
+- Backend de Spring Boot corriendo localmente o URL de producción (DigitalOcean).
 - *(Opcional)* Cuenta en [Cloudinary](https://cloudinary.com) para gestión de imágenes.
 
 ### Pasos
@@ -217,7 +219,7 @@ cd la-peruanita-frontend
 npm install
 
 # 3. Configurar variables de entorno
-# Editar src/environments/environment.ts con tus credenciales de Supabase
+# Editar src/environments/environment.ts con la URL de tu API REST de Spring Boot
 
 # 4. Iniciar servidor de desarrollo
 npm start
@@ -250,8 +252,7 @@ Configura el archivo `src/environments/environment.ts`:
 ```typescript
 export const environment = {
   production: false,
-  supabaseUrl: 'TU_SUPABASE_URL',
-  supabaseKey: 'TU_SUPABASE_ANON_KEY',
+  apiUrl: 'http://localhost:8080/api/v1', // URL del backend Spring Boot
 };
 ```
 
@@ -300,13 +301,13 @@ Los servicios principales se encuentran en `src/app/core/services/`:
 
 | Servicio | Responsabilidad |
 |---|---|
-| `supabase.service.ts` | Cliente singleton de Supabase (PostgreSQL + Auth) |
+| `api.service.ts` | Cliente HTTP base e interceptores JWT |
 | `product.service.ts` | CRUD de productos con soporte offline |
-| `sales.service.ts` | Registro y consulta de ventas |
+| `sales.service.ts` | Registro y consulta de ventas vía API REST |
 | `inventory.service.ts` | Gestión de stock e inventario |
 | `inventory-movement.service.ts` | Movimientos de entrada/salida de inventario |
 | `offline.service.ts` | Detección de conectividad y cola offline |
-| `sync.service.ts` | Sincronización de operaciones pendientes con Supabase |
+| `sync.service.ts` | Sincronización de operaciones pendientes con Spring Boot |
 | `local-db.service.ts` | Interfaz con IndexedDB para persistencia local |
 | `cloudinary.service.ts` | Subida y gestión de imágenes en Cloudinary |
 | `export.service.ts` | Exportación de datos a PDF y Excel |
@@ -340,6 +341,26 @@ Los servicios principales se encuentran en `src/app/core/services/`:
 
 ---
 
+## 🖨️ Hardware y Periféricos (POS)
+
+El sistema cuenta con un motor de impresión de bajo nivel a través de **WebUSB** que se comunica directamente con impresoras térmicas ESC/POS (ej. Xprinter POS-80). Esto permite imprimir vouchers instantáneos con un diseño corporativo tipo pasarela de pago (Niubiz/Izipay), saltándose las colas de impresión lentas del sistema operativo.
+
+### Guía de Despliegue en Producción (Impresión Térmica en Windows)
+Para que el cliente final pueda utilizar el botón **"Ticket POS"** en Chrome sin que Windows bloquee el puerto USB (error `Access Denied`), es **obligatorio** reemplazar el driver genérico:
+
+1. **Conectar** y encender la impresora térmica USB. *(No instalar los drivers que vienen en el CD oficial).*
+2. Descargar y ejecutar **[Zadig](https://zadig.akeo.ie/)** en la PC del cliente.
+3. Ir al menú `Options` > `List All Devices`.
+4. En el menú desplegable, seleccionar la impresora (suele aparecer como `USB Printing Support` o `Xprinter`).
+5. En el recuadro verde de la derecha, asegurarse de elegir el driver **`WinUSB`**.
+6. Hacer clic en el botón gigante **Replace Driver**.
+
+Una vez hecho esto, Chrome podrá adueñarse de la impresora mediante la API WebUSB.
+
+> 💡 **Nota para Desarrolladores (Linux):** Si desarrollas en Linux (ej. Manjaro/Ubuntu), el kernel cargará automáticamente el módulo `usblp` secuestrando el puerto. Para poder hacer pruebas locales WebUSB, debes liberar el puerto ejecutando: `sudo rmmod usblp`.
+
+---
+
 ## 📱 Capacidades Offline y PWA
 
 La aplicación está configurada como **Progressive Web App (PWA)**:
@@ -349,7 +370,7 @@ La aplicación está configurada como **Progressive Web App (PWA)**:
 - **Íconos PWA** generados con el script `generate-pwa-icons.sh`.
 - **Cache de assets** estáticos y respuestas de red para funcionamiento sin conexión.
 - **IndexedDB** (vía librería `idb`) para almacenar productos, ventas y configuraciones localmente.
-- **Sincronización automática**: cuando la conexión es restaurada, el `SyncService` envía todas las operaciones pendientes a Supabase.
+- **Sincronización automática**: cuando la conexión es restaurada, el `SyncService` envía todas las operaciones pendientes a la API REST de Spring Boot.
 - **Indicador visual** de estado de conexión y sincronización en el navbar.
 
 ---
