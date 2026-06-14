@@ -280,6 +280,7 @@ export class ClientService {
     return {
       id: String(raw.id),
       name: raw.name ?? raw.nombre ?? '',
+      documentNumber: raw.documentNumber ?? undefined,
       phone: raw.phone ?? raw.telefono ?? '',
       email: raw.email ?? undefined,
       address: raw.address ?? raw.direccion ?? undefined,
@@ -301,6 +302,7 @@ export class ClientService {
   private mapToRequest(data: Partial<Client>): Record<string, any> {
     return {
       name: data.name,
+      documentNumber: data.documentNumber ?? null,
       phone: data.phone,
       email: data.email ?? null,
       address: data.address ?? null,

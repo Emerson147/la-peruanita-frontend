@@ -357,6 +357,7 @@ export interface DashboardResponse {
 export interface Client {
   id: string;
   name: string;
+  documentNumber?: string;
   phone: string;
   email?: string;
   address?: string;

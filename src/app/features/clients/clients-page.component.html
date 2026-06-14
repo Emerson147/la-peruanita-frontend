@@ -138,8 +138,8 @@
             <!-- Subtle gradient accent on hover -->
             <div class="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-stone-100/50 dark:from-stone-800/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-500"></div>
 
-            <!-- Action buttons (visible on mobile, hover on desktop) -->
-            <div class="absolute top-4 right-4 flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
+            <!-- Action buttons -->
+            <div class="absolute top-4 right-4 flex items-center gap-1 opacity-100 transition-opacity duration-200 z-10">
               <button
                 (click)="openEdit(client)"
                 class="p-1.5 text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
@@ -165,7 +165,12 @@
                 <h3 class="text-sm font-bold text-stone-900 dark:text-stone-100 leading-tight truncate">
                   {{ client.name }}
                 </h3>
-                <p class="text-xs text-stone-400 dark:text-stone-500 font-mono mt-0.5">{{ client.phone }}</p>
+                <p class="text-xs text-stone-400 dark:text-stone-500 font-mono mt-0.5">
+                  @if (client.documentNumber) {
+                    DNI: {{ client.documentNumber }} • 
+                  }
+                  CEL: {{ client.phone }}
+                </p>
                 @if (client.email) {
                   <p class="text-xs text-stone-400 dark:text-stone-500 truncate">{{ client.email }}</p>
                 }
@@ -270,6 +275,14 @@
             placeholder="Ej: María Pérez López"
             [value]="formName()"
             (valueChange)="formName.set($event)"
+          ></app-ui-input>
+        </div>
+        <div class="space-y-1">
+          <app-ui-label class="text-[10px] uppercase font-bold text-stone-500">DNI / Documento</app-ui-label>
+          <app-ui-input
+            placeholder="Ej: 75981434"
+            [value]="formDocumentNumber()"
+            (valueChange)="formDocumentNumber.set($event)"
           ></app-ui-input>
         </div>
 

@@ -28,6 +28,7 @@ export class ClientsPageComponent {
 
   // Formulario (señales independientes para rendimiento)
   formName = signal('');
+  formDocumentNumber = signal('');
   formPhone = signal('');
   formEmail = signal('');
   formAddress = signal('');
@@ -58,6 +59,7 @@ export class ClientsPageComponent {
       c =>
         c.name.toLowerCase().includes(q) ||
         c.phone.includes(q) ||
+        (c.documentNumber && c.documentNumber.includes(q)) ||
         (c.email && c.email.toLowerCase().includes(q))
     );
   });
@@ -75,6 +77,7 @@ export class ClientsPageComponent {
   openEdit(client: Client): void {
     this.editingClient.set(client);
     this.formName.set(client.name);
+    this.formDocumentNumber.set(client.documentNumber ?? '');
     this.formPhone.set(client.phone);
     this.formEmail.set(client.email ?? '');
     this.formAddress.set(client.address ?? '');
@@ -93,6 +96,7 @@ export class ClientsPageComponent {
 
   private resetForm(): void {
     this.formName.set('');
+    this.formDocumentNumber.set('');
     this.formPhone.set('');
     this.formEmail.set('');
     this.formAddress.set('');
@@ -123,6 +127,7 @@ export class ClientsPageComponent {
 
     const payload = {
       name,
+      documentNumber: this.formDocumentNumber().trim() || undefined,
       phone,
       email: this.formEmail().trim() || undefined,
       address: this.formAddress().trim() || undefined,

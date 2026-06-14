@@ -22,6 +22,7 @@ import { BackendAuthService } from '../../../core/services/backend-auth.service'
 import { ToastService } from '../../../core/services/toast.service';
 import { LoggerService } from '../../../core/services/logger.service';
 import { ClientService } from '../../../core/services/client.service';
+import { ReniecService, PersonaReniec } from '../../../core/services/reniec.service';
 import { Sale, SaleItem, Product, ProductVariant, VentaRequest, Client, Almacen } from '../../../core/models';
 import { UiAnimatedDialogComponent } from '../../../shared/ui/ui-animated-dialog/ui-animated-dialog.component';
 import { ImageFallbackDirective } from '../../../shared/directives/image-fallback.directive';
@@ -64,6 +65,7 @@ export class PosPageComponent {
   private authService = inject(BackendAuthService);
   private logger = inject(LoggerService);
   private clientService = inject(ClientService);
+  private reniecService = inject(ReniecService);
   private destroyRef = inject(DestroyRef);
 
   // ViewChild para enfoque automático
@@ -100,10 +102,14 @@ export class PosPageComponent {
   // --- INTEGRACIÓN CLIENTES ---
   selectedClient = signal<Client | null>(null);
   clientSearchQuery = signal('');
+  reniecClientResult = signal<PersonaReniec | null>(null);
+  isSearchingReniecLive = signal(false);
   showNewClientModal = signal(false);
+  newClientDni = signal('');
   newClientName = signal('');
   newClientPhone = signal('');
   newClientError = signal('');
+  isSearchingDni = signal(false);
 
   // 🎯 Tipo de venta (auto-detectado por día)
   saleType = signal<'feria-acobamba' | 'feria-paucara' | 'tienda'>('tienda');
@@ -329,7 +335,8 @@ export class PosPageComponent {
     if (!q) return [];
     return this.clientService.clients().filter(c => 
       c.name.toLowerCase().includes(q) || 
-      c.phone.includes(q)
+      c.phone.includes(q) ||
+      (c.documentNumber && c.documentNumber.includes(q))
     ).slice(0, 5);
   });
 
@@ -792,6 +799,43 @@ export class PosPageComponent {
   }
 
   // --- LÓGICA DE CLIENTES ---
+  localExactMatch = signal<Client | null>(null);
+
+  onClientSearchChange(query: string) {
+    this.clientSearchQuery.set(query);
+    const q = query.trim();
+    
+    // Si es un DNI (8 dígitos exactos)
+    if (/^\d{8}$/.test(q)) {
+      // 🚀 CACHÉ LOCAL: Verificar si ya existe en la base de datos
+      const existeLocal = this.clientService.clients().find(c => c.documentNumber === q);
+      this.localExactMatch.set(existeLocal || null);
+      
+      if (existeLocal) {
+        // Ya lo tenemos, no gastar saldo en RENIEC
+        this.reniecClientResult.set(null);
+        this.isSearchingReniecLive.set(false);
+      } else {
+        // No existe localmente, consultamos a RENIEC
+        this.isSearchingReniecLive.set(true);
+        this.reniecClientResult.set(null);
+        this.reniecService.consultarDni(q).subscribe({
+          next: (persona) => {
+            this.reniecClientResult.set(persona);
+            this.isSearchingReniecLive.set(false);
+          },
+          error: () => {
+            this.isSearchingReniecLive.set(false);
+          }
+        });
+      }
+    } else {
+      this.localExactMatch.set(null);
+      this.reniecClientResult.set(null);
+      this.isSearchingReniecLive.set(false);
+    }
+  }
+
   selectClient(client: Client) {
     this.selectedClient.set(client);
     this.clientSearchQuery.set('');
@@ -806,13 +850,34 @@ export class PosPageComponent {
   }
 
   openNewClientModal() {
+    this.newClientDni.set('');
     this.newClientName.set(this.clientSearchQuery());
     this.newClientPhone.set('');
     this.newClientError.set('');
+    this.isSearchingDni.set(false);
     this.showNewClientModal.set(true);
   }
 
+  onDniChange(dni: string) {
+    this.newClientDni.set(dni);
+    if (dni.length === 8) {
+      this.isSearchingDni.set(true);
+      this.reniecService.consultarDni(dni).subscribe({
+        next: (persona) => {
+          this.newClientName.set(persona.nombreCompleto);
+          this.isSearchingDni.set(false);
+          this.toastService.success('DNI encontrado en RENIEC');
+        },
+        error: (err) => {
+          this.isSearchingDni.set(false);
+          this.toastService.warning('No se encontró el DNI o hubo un error');
+        }
+      });
+    }
+  }
+
   async saveNewClient() {
+    const dni = this.newClientDni().trim();
     const name = this.newClientName().trim();
     const phone = this.newClientPhone().trim();
     if (!name || !phone) {
@@ -822,7 +887,11 @@ export class PosPageComponent {
     
     try {
       // Bloquear o mostrar loader (opcional) si tuviéramos isLoading aquí
-      const realClient = await this.clientService.createClientAsync({ name, phone });
+      const realClient = await this.clientService.createClientAsync({ 
+        name, 
+        phone,
+        documentNumber: dni ? dni : undefined
+      });
       
       this.selectedClient.set(realClient);
       this.clientName = realClient.name;
@@ -832,6 +901,24 @@ export class PosPageComponent {
     } catch (err) {
       // Toast ya lo maneja ClientService en caso de error
       this.newClientError.set('Ocurrió un error guardando el cliente.');
+    }
+  }
+
+  async registerFromReniec() {
+    const persona = this.reniecClientResult();
+    if (!persona) return;
+
+    try {
+      const realClient = await this.clientService.createClientAsync({ 
+        name: persona.nombreCompleto, 
+        documentNumber: persona.numeroDocumento,
+        phone: '' // El usuario puede editarlo después o dejarlo vacío
+      });
+      
+      this.selectClient(realClient);
+      this.toastService.success('Cliente registrado desde RENIEC');
+    } catch (err) {
+      this.toastService.error('Ocurrió un error registrando el cliente');
     }
   }
 
