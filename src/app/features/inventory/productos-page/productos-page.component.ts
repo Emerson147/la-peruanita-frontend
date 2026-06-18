@@ -77,7 +77,7 @@ export class ProductosPageComponent {
     // Cargar almacenes
     this.almacenService.getAlmacenes().subscribe({
       next: (data) => this.almacenes.set(data),
-      error: (err) => console.error('Error cargando almacenes', err)
+      error: (err) => console.error('Error cargando almacenes', err),
     });
   }
 
@@ -127,11 +127,31 @@ export class ProductosPageComponent {
   productBrand = signal('');
   productBarcode = signal('');
   initialStock = signal(0);
-  activeSizeTab = signal<string>('38'); // Talla activa en el modal
+  // Configuración de Generación de Variantes (Estilo Stripe)
+  globalAlmacenId = signal<string>(''); // Almacén por defecto
+  isAlmacenDropdownOpen = signal(false);
+  
+  globalAlmacenName = computed(() => {
+    const id = this.globalAlmacenId();
+    if (!id) return 'Selecciona un almacén principal...';
+    const found = this.almacenes().find((a) => String(a.id) === String(id));
+    return found ? found.nombre : 'Selecciona un almacén principal...';
+  });
+
+  selectGlobalAlmacen(id: string | undefined) {
+    if (id) {
+      this.globalAlmacenId.set(String(id));
+    }
+    this.isAlmacenDropdownOpen.set(false);
+  }
+
+  selectedColors = signal<string[]>([]); // Colores seleccionados para generar
+  selectedSizes = signal<string[]>([]); // Tallas seleccionadas para generar
+
   costPrice = signal(0);
   salePrice = signal(0);
   selectedImage = signal<string | null>(null);
-  variants = signal<ProductVariant[]>([]); // Variantes del producto
+  variants = signal<ProductVariant[]>([]); // Variantes generadas
   expandedProductId = signal<string | null>(null); // Para expandir/contraer variantes en cards
 
   //  Paginación y Modales
@@ -141,21 +161,19 @@ export class ProductosPageComponent {
   expandedTableProductId = signal<string | null>(null);
 
   // Tallas y colores disponibles
-  availableSizes = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44'];
+  availableSizes = ['34','35', '36', '37', '38', '39', '40', '41', '42', '43'];
   availableColors = ['Negro', 'Blanco', 'Gris', 'Azul', 'Rojo', 'Marrón', 'Beige', 'Vino'];
 
-  // Computed: Tallas únicas que tienen variantes
-  activeSizes = computed(() => {
-    const sizes = new Set(this.variants().map((v) => v.size));
-    return Array.from(sizes);
+  // Computed: Colores únicos que tienen variantes
+  activeColorsWithVariants = computed(() => {
+    const colors = new Set(this.variants().map((v) => v.color));
+    return Array.from(colors);
   });
 
-  // Computed: Colores para la talla activa
-  activeColors = computed(() => {
-    const activeSize = this.activeSizeTab();
-    return this.variants()
-      .filter((v) => v.size === activeSize)
-      .map((v) => v.color);
+  // Computed: Tallas únicas generadas en la matriz
+  activeSizes = computed(() => {
+    const sizes = new Set(this.variants().map((v) => v.size));
+    return Array.from(sizes).sort((a, b) => Number(a) - Number(b));
   });
 
   // Computed: Ganancia y margen en tiempo real
@@ -399,21 +417,9 @@ export class ProductosPageComponent {
     // Cargar variantes existentes
     if (product.variants && product.variants.length > 0) {
       this.variants.set([...product.variants]);
-      // Establecer la primera talla como activa
-      const firstSize = product.variants[0].size;
-      this.activeSizeTab.set(firstSize);
     } else {
-      // Si no hay variantes, crear una por defecto
-      this.variants.set([
-        {
-          id: crypto.randomUUID(), // ✅ UUID válido
-          size: '38',
-          color: 'Negro',
-          stock: product.stock || 0,
-          barcode: '',
-        },
-      ]);
-      this.activeSizeTab.set('38');
+      // Si no hay variantes, inicializar vacío
+      this.variants.set([]);
     }
 
     this.activeModalTab.set('INFO');
@@ -430,129 +436,83 @@ export class ProductosPageComponent {
     this.productCategory.set('General');
     this.costPrice.set(0);
     this.salePrice.set(0);
-    this.activeSizeTab.set('38');
     this.selectedImage.set(null);
-    // Inicializar con una variante por defecto
-    this.variants.set([
-      {
-        id: crypto.randomUUID(), // ✅ UUID válido
-        size: '38',
-        color: 'Negro',
-        stock: 0,
-        barcode: '',
-      },
-    ]);
+    this.variants.set([]);
   }
 
   /**
-   * Generar variantes por defecto basadas en tallas y colores seleccionados
+   * Toggle color en la configuración de generación
    */
-  /**
-   * Agregar una nueva talla al producto
-   */
-  addSize(size: string) {
-    const currentVariants = this.variants();
-    // Verificar si ya existe alguna variante con esta talla
-    const hasSizeAlready = currentVariants.some((v) => v.size === size);
-
-    if (!hasSizeAlready) {
-      // Agregar una variante con el primer color por defecto
-      const newVariant: ProductVariant = {
-        id: crypto.randomUUID(), // ✅ UUID válido
-        size,
-        color: 'Negro',
-        stock: 0,
-        barcode: '',
-      };
-      this.variants.set([...currentVariants, newVariant]);
-    }
-
-    // Cambiar a la talla que acabamos de agregar
-    this.activeSizeTab.set(size);
-  }
-
-  /**
-   * Eliminar todas las variantes de una talla
-   */
-  removeSize(size: string) {
-    const currentVariants = this.variants();
-    const filtered = currentVariants.filter((v) => v.size !== size);
-
-    if (filtered.length === 0) {
-      // Si se eliminan todas, mantener al menos una variante
-      this.variants.set([
-        {
-          id: crypto.randomUUID(), // ✅ UUID válido
-          size: '38',
-          color: 'Negro',
-          stock: 0,
-          barcode: '',
-        },
-      ]);
-      this.activeSizeTab.set('38');
+  toggleSelectedColor(color: string) {
+    const current = this.selectedColors();
+    if (current.includes(color)) {
+      this.selectedColors.set(current.filter((c) => c !== color));
     } else {
-      this.variants.set(filtered);
-      // Si eliminamos la talla activa, cambiar a la primera disponible
-      if (this.activeSizeTab() === size) {
-        this.activeSizeTab.set(filtered[0].size);
-      }
+      this.selectedColors.set([...current, color]);
     }
   }
 
   /**
-   * Agregar un color a la talla activa
+   * Toggle talla en la configuración de generación
    */
-  addColorToActiveSize(color: string) {
-    const activeSize = this.activeSizeTab();
-    const currentVariants = this.variants();
-
-    // Verificar si ya existe esta combinación
-    const exists = currentVariants.some((v) => v.size === activeSize && v.color === color);
-
-    if (!exists) {
-      const newVariant: ProductVariant = {
-        id: crypto.randomUUID(), // ✅ UUID válido
-        size: activeSize,
-        color,
-        stock: 0,
-        barcode: '',
-      };
-      this.variants.set([...currentVariants, newVariant]);
-    }
-  }
-
-  /**
-   * Eliminar un color de la talla activa
-   */
-  removeColorFromActiveSize(color: string) {
-    const activeSize = this.activeSizeTab();
-    const currentVariants = this.variants();
-
-    // Filtrar la variante específica
-    const filtered = currentVariants.filter((v) => !(v.size === activeSize && v.color === color));
-
-    // Asegurar que cada talla tenga al menos un color
-    const sizeVariants = filtered.filter((v) => v.size === activeSize);
-    if (sizeVariants.length === 0) {
-      // Mantener al menos una variante para esta talla
-      return;
-    }
-
-    this.variants.set(filtered);
-  }
-
-  /**
-   * Toggle color para la talla activa
-   */
-  toggleColorForActiveSize(color: string) {
-    const activeSize = this.activeSizeTab();
-    const hasColor = this.activeColors().includes(color);
-
-    if (hasColor) {
-      this.removeColorFromActiveSize(color);
+  toggleSelectedSize(size: string) {
+    const current = this.selectedSizes();
+    if (current.includes(size)) {
+      this.selectedSizes.set(current.filter((s) => s !== size));
     } else {
-      this.addColorToActiveSize(color);
+      this.selectedSizes.set([...current, size]);
     }
+  }
+
+  /**
+   * Generar la matriz de variantes basada en las selecciones
+   */
+  generateMatrix() {
+    const colors = this.selectedColors();
+    const sizes = this.selectedSizes();
+    const currentVariants = this.variants();
+    const newVariants: ProductVariant[] = [];
+    const almacenId = this.globalAlmacenId() || undefined;
+    const almacenName = this.almacenes().find((a) => String(a.id) === String(almacenId))?.nombre;
+
+    colors.forEach((color) => {
+      sizes.forEach((size) => {
+        // Verificar si la variante ya existe
+        const exists = currentVariants.some((v) => v.color === color && v.size === size);
+        if (!exists) {
+          newVariants.push({
+            id: crypto.randomUUID(),
+            color,
+            size,
+            stock: 0,
+            barcode: '',
+            almacenId,
+            almacenName,
+          });
+        }
+      });
+    });
+
+    // Agregar las nuevas variantes al INICIO de la lista existente
+    this.variants.set([...newVariants, ...currentVariants]);
+    // Limpiamos la selección para permitir generar nuevas combinaciones después si quieren
+    this.selectedColors.set([]);
+    this.selectedSizes.set([]);
+  }
+
+  /**
+   * Limpiar la matriz generada
+   */
+  clearVariants() {
+    this.variants.set([]);
+  }
+
+  /**
+   * Eliminar una variante específica de la matriz
+   */
+  removeVariant(variantId: string) {
+    const updated = this.variants().filter((v) => v.id !== variantId);
+    this.variants.set(updated);
   }
 
   /**
@@ -566,9 +526,7 @@ export class ProductosPageComponent {
   }
 
   updateVariantBarcode(variantId: string, barcode: string) {
-    const updated = this.variants().map((v) =>
-      v.id === variantId ? { ...v, barcode } : v,
-    );
+    const updated = this.variants().map((v) => (v.id === variantId ? { ...v, barcode } : v));
     this.variants.set(updated);
   }
 
@@ -698,7 +656,8 @@ export class ProductosPageComponent {
     if (action === 'delete') {
       this.confirmData.set({
         title: 'Archivar Producto',
-        message: '¿Estás seguro de archivar este producto? No se eliminará si tiene ventas asociadas, solo se ocultará del catálogo principal.',
+        message:
+          '¿Estás seguro de archivar este producto? No se eliminará si tiene ventas asociadas, solo se ocultará del catálogo principal.',
         actionLabel: 'Archivar Producto',
         isDestructive: true,
         onConfirm: async () => {
@@ -709,7 +668,7 @@ export class ProductosPageComponent {
             this.toastService.error('Error al archivar el producto');
           }
           this.closeConfirmDialog();
-        }
+        },
       });
       this.isConfirmDialogOpen.set(true);
     }
@@ -731,16 +690,18 @@ export class ProductosPageComponent {
           const success = await this.productService.deleteProduct(id);
           if (success) successCount++;
         }
-        
+
         if (successCount === selectedIds.length) {
           this.toastService.success(`Se archivaron ${successCount} productos correctamente`);
         } else {
-          this.toastService.warning(`Se archivaron ${successCount} de ${selectedIds.length} productos`);
+          this.toastService.warning(
+            `Se archivaron ${successCount} de ${selectedIds.length} productos`,
+          );
         }
-        
+
         this.clearSelection();
         this.closeConfirmDialog();
-      }
+      },
     });
     this.isConfirmDialogOpen.set(true);
   }
@@ -768,17 +729,17 @@ export class ProductosPageComponent {
   }
 
   /**
-   * Obtener variantes de una talla específica
+   * Obtener variantes de un color específico
    */
-  getVariantsBySize(size: string): ProductVariant[] {
-    return this.variants().filter((v) => v.size === size);
+  getVariantsByColor(color: string): ProductVariant[] {
+    return this.variants().filter((v) => v.color === color);
   }
 
   /**
-   * Contar variantes de una talla específica
+   * Contar variantes de un color específico
    */
-  countVariantsBySize(size: string): number {
-    return this.variants().filter((v) => v.size === size).length;
+  countVariantsByColor(color: string): number {
+    return this.variants().filter((v) => v.color === color).length;
   }
 
   /**
@@ -799,7 +760,7 @@ export class ProductosPageComponent {
       Botas: 'snowshoeing',
       Sandalias: 'surfing',
       Deportivo: 'sprint',
-      Accesorios: 'diamond'
+      Accesorios: 'diamond',
     };
     return icons[category] || 'category';
   }

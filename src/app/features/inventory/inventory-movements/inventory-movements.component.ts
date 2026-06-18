@@ -33,6 +33,9 @@ export class InventoryMovementsComponent {
   movementType = signal<'entrada' | 'ajuste'>('entrada');
   selectedProductId = signal<string>('');
   selectedAlmacenId = signal<string>('');
+  isProductDropdownOpen = signal(false);
+  isAlmacenDropdownOpen = signal(false);
+
   variantQuantities = signal<{ [variantId: string]: number | null }>({}); // Nuevo: Multi-variantes
   quantity = signal<number>(1);
   reason = signal<string>('');
@@ -44,6 +47,17 @@ export class InventoryMovementsComponent {
   // Computados de selección
   selectedProduct = computed(() => {
     return this.products().find((p) => p.id === this.selectedProductId());
+  });
+
+  selectedProductName = computed(() => {
+    const p = this.selectedProduct();
+    return p ? `${p.name} (Stock: ${p.stock})` : 'Seleccione producto...';
+  });
+
+  selectedAlmacenName = computed(() => {
+    const id = this.selectedAlmacenId();
+    const found = this.almacenes().find(a => String(a.id) === String(id));
+    return found ? found.nombre : 'Seleccione un almacén...';
   });
 
   productVariants = computed(() => {
@@ -363,6 +377,22 @@ export class InventoryMovementsComponent {
     this.invoice.set('');
     this.cost.set(0);
     this.notes.set('');
+  }
+
+  /**
+   * Eventos de selección custom UI
+   */
+  selectProduct(id: string) {
+    this.selectedProductId.set(id);
+    this.isProductDropdownOpen.set(false);
+    this.onProductChange();
+  }
+
+  selectAlmacen(id: string | undefined) {
+    if (id) {
+      this.selectedAlmacenId.set(String(id));
+    }
+    this.isAlmacenDropdownOpen.set(false);
   }
 
   /**
