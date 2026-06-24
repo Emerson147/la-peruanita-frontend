@@ -755,12 +755,11 @@ export class ProductosPageComponent {
   getCategoryIcon(category: string): string {
     const icons: Record<string, string> = {
       General: 'inventory_2',
-      Zapatillas: 'directions_run',
-      Zapatos: 'steps',
       Botas: 'snowshoeing',
-      Sandalias: 'surfing',
-      Deportivo: 'sprint',
-      Accesorios: 'diamond',
+      Botines: 'surfing',
+      Tacos: 'sports_soccer',
+      Zapatos: 'steps',
+      Zapatillas: 'directions_run'
     };
     return icons[category] || 'category';
   }

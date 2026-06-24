@@ -239,7 +239,13 @@
           Todos
         </button>
         @for (
-          cat of ['Zapatillas', 'Zapatos', 'Botas', 'Sandalias', 'Deportivo', 'Accesorios'];
+          cat of [
+            'Botas',
+            'Botines',
+            'Tacos',
+            'Zapatos',
+            'Zapatillas'
+          ];
           track cat
         ) {
           <button
@@ -494,7 +500,7 @@
                   </td>
                 </tr>
 
-                <!-- ✅ Fila Expandible para Variantes con Animación Fluida -->
+                <!-- Fila Expandible para Variantes con Animación Fluida -->
                 <tr>
                   <td colspan="6" class="p-0">
                     <div
@@ -1136,12 +1142,11 @@
                 @for (
                   cat of [
                     'General',
-                    'Zapatillas',
-                    'Zapatos',
                     'Botas',
-                    'Sandalias',
-                    'Deportivo',
-                    'Accesorios',
+                    'Botines',
+                    'Tacos',
+                    'Zapatos',
+                    'Zapatillas'
                   ];
                   track cat
                 ) {
