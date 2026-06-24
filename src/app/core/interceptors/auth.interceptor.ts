@@ -23,7 +23,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      if ((error.status === 401 || error.status === 403) && isBackendUrl) {
+      // 401: Unauthorized (Token expirado o inválido) -> Desloguear
+      // 403: Forbidden (Token válido pero sin permisos) -> NO desloguear
+      if (error.status === 401 && isBackendUrl) {
         localStorage.removeItem('denraf_token');
         router.navigate(['/login']);
       }

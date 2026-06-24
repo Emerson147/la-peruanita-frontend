@@ -62,7 +62,8 @@ export class ProductService {
       },
       error: (error) => {
         console.error('❌ Error cargando productos:', error);
-        this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)));
+        const errorMessage = error.message || 'Error desconocido al cargar productos';
+        this.errorHandler.handleError(new Error(errorMessage), 'Carga de Productos', 'high');
         this.isLoading.set(false);
       }
     });

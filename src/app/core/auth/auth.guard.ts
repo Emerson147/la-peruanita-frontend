@@ -11,7 +11,6 @@ export const authGuard: CanActivateFn = (route, state) => {
     return true; // ¡Pase usted, mi King!
   } else {
     // ¡Alto ahí! No tienes credencial.
-    router.navigate(['/login']);
-    return false;
+    return router.createUrlTree(['/login']);
   }
 };

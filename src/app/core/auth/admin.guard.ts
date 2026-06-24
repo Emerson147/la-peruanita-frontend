@@ -17,6 +17,5 @@ export const adminGuard: CanActivateFn = (route, state) => {
   }
 
   toast.error('Acceso denegado. Solo los administradores pueden ver esta sección.');
-  router.navigate(['/pos']);
-  return false;
+  return router.createUrlTree(['/pos']);
 };

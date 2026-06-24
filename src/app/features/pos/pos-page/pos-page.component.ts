@@ -141,7 +141,13 @@ export class PosPageComponent {
           this.selectedAlmacen.set(activos[0]);
         }
       },
-      error: (err) => this.logger.error('Error cargando almacenes en POS', err)
+      error: (err) => {
+        if (err.status === 403) {
+          this.logger.log('ℹ️ Carga de almacenes omitida (El usuario no tiene rol de admin, esto es normal).');
+        } else {
+          this.logger.error('Error cargando almacenes en POS', err);
+        }
+      }
     });
   }
 
