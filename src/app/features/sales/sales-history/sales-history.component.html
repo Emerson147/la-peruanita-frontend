@@ -469,59 +469,20 @@
       }
     </div>
 
-    <!-- Modal Detalles Premium Receipt -->
-    @if (selectedSale()) {
-      <div
-        class="fixed inset-0 z-50 flex justify-center items-center bg-stone-900/40 dark:bg-black/60 backdrop-blur-[6px] animate-in fade-in"
-        (click)="closeDetails()"
-      >
+    <!-- Modal Detalles Premium Receipt (HTML5 Dialog Top-Layer) -->
+    <dialog
+      #detailsDialog
+      class="bg-transparent p-0 m-auto backdrop:bg-stone-900/40 dark:backdrop:bg-black/60 backdrop:backdrop-blur-[6px] open:animate-in open:fade-in"
+      (click)="closeDetails()"
+    >
+      @if (selectedSale()) {
         <!-- Ticket Container -->
         <div
-          class="relative w-full max-w-[400px] mx-4 bg-white dark:bg-[#1c1c1c] shadow-2xl animate-in zoom-in-95 font-sans border border-stone-200/50 dark:border-stone-700/50"
+          class="relative w-[400px] max-w-[90vw] mx-auto bg-white dark:bg-[#1c1c1c] shadow-2xl animate-in zoom-in-95 font-sans border border-stone-200/50 dark:border-stone-700/50"
           style="
             clip-path: polygon(
-              0 10px,
-              5% 0,
-              10% 10px,
-              15% 0,
-              20% 10px,
-              25% 0,
-              30% 10px,
-              35% 0,
-              40% 10px,
-              45% 0,
-              50% 10px,
-              55% 0,
-              60% 10px,
-              65% 0,
-              70% 10px,
-              75% 0,
-              80% 10px,
-              85% 0,
-              90% 10px,
-              95% 0,
-              100% 10px,
-              100% calc(100% - 10px),
-              95% 100%,
-              90% calc(100% - 10px),
-              85% 100%,
-              80% calc(100% - 10px),
-              75% 100%,
-              70% calc(100% - 10px),
-              65% 100%,
-              60% calc(100% - 10px),
-              55% 100%,
-              50% calc(100% - 10px),
-              45% 100%,
-              40% calc(100% - 10px),
-              35% 100%,
-              30% calc(100% - 10px),
-              25% 100%,
-              20% calc(100% - 10px),
-              15% 100%,
-              10% calc(100% - 10px),
-              5% 100%,
-              0 calc(100% - 10px)
+              0 10px, 5% 0, 10% 10px, 15% 0, 20% 10px, 25% 0, 30% 10px, 35% 0, 40% 10px, 45% 0, 50% 10px, 55% 0, 60% 10px, 65% 0, 70% 10px, 75% 0, 80% 10px, 85% 0, 90% 10px, 95% 0, 100% 10px,
+              100% calc(100% - 10px), 95% 100%, 90% calc(100% - 10px), 85% 100%, 80% calc(100% - 10px), 75% 100%, 70% calc(100% - 10px), 65% 100%, 60% calc(100% - 10px), 55% 100%, 50% calc(100% - 10px), 45% 100%, 40% calc(100% - 10px), 35% 100%, 30% calc(100% - 10px), 25% 100%, 20% calc(100% - 10px), 15% 100%, 10% calc(100% - 10px), 5% 100%, 0 calc(100% - 10px)
             );
           "
           (click)="$event.stopPropagation()"
@@ -562,10 +523,10 @@
             class="relative mx-6 border-t-2 border-dashed border-stone-200 dark:border-stone-700"
           >
             <div
-              class="absolute -left-[14px] -top-[14px] w-7 h-7 bg-stone-900/40 dark:bg-black/60 rounded-full backdrop-blur-sm shadow-inner"
+              class="absolute -left-[14px] -top-[14px] w-7 h-7 bg-[#f8fafc] dark:bg-[#09090b] rounded-full shadow-inner"
             ></div>
             <div
-              class="absolute -right-[14px] -top-[14px] w-7 h-7 bg-stone-900/40 dark:bg-black/60 rounded-full backdrop-blur-sm shadow-inner"
+              class="absolute -right-[14px] -top-[14px] w-7 h-7 bg-[#f8fafc] dark:bg-[#09090b] rounded-full shadow-inner"
             ></div>
           </div>
 
@@ -706,14 +667,15 @@
             </div>
           </div>
         </div>
-      </div>
-    }
-    <!-- Modal Anular iOS Style -->
-    @if (cancelModalOpen()) {
-      <div
-        class="fixed inset-0 z-50 flex justify-center items-center bg-stone-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in"
-        (click)="closeCancelModal()"
-      >
+      }
+    </dialog>
+    <!-- Modal Anular iOS Style (HTML5 Dialog) -->
+    <dialog
+      #cancelDialog
+      class="bg-transparent p-0 m-auto backdrop:bg-stone-900/40 dark:backdrop:bg-black/60 backdrop:backdrop-blur-[6px] open:animate-in open:fade-in"
+      (click)="closeCancelModal()"
+    >
+      @if (cancelModalOpen()) {
         <div
           class="bg-white dark:bg-[#1c1c1e] w-[400px] rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 text-center"
           (click)="$event.stopPropagation()"
@@ -764,8 +726,8 @@
             </button>
           </div>
         </div>
-      </div>
-    }
+      }
+    </dialog>
   </div>
 </div>
 

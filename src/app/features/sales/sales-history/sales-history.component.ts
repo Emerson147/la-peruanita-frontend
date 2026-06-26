@@ -151,11 +151,21 @@ export class SalesHistoryComponent {
 
   // Modales y Visuales
   selectedSale = signal<Sale | null>(null);
+  @ViewChild('detailsDialog') detailsDialog!: ElementRef<HTMLDialogElement>;
+
   viewDetails(sale: Sale) {
     this.selectedSale.set(sale);
+    setTimeout(() => {
+      if (this.detailsDialog?.nativeElement) {
+        this.detailsDialog.nativeElement.showModal();
+      }
+    }, 0);
   }
 
   closeDetails() {
+    if (this.detailsDialog?.nativeElement) {
+      this.detailsDialog.nativeElement.close();
+    }
     this.selectedSale.set(null);
   }
 
@@ -215,15 +225,24 @@ export class SalesHistoryComponent {
   saleToCancel = signal<Sale | null>(null);
   cancelReason = signal('');
   restoreStock = signal(true);
+  @ViewChild('cancelDialog') cancelDialog!: ElementRef<HTMLDialogElement>;
 
   openCancelModal(sale: Sale) {
     this.saleToCancel.set(sale);
     this.cancelReason.set('');
     this.restoreStock.set(true);
     this.cancelModalOpen.set(true);
+    setTimeout(() => {
+      if (this.cancelDialog?.nativeElement) {
+        this.cancelDialog.nativeElement.showModal();
+      }
+    }, 0);
   }
 
   closeCancelModal() {
+    if (this.cancelDialog?.nativeElement) {
+      this.cancelDialog.nativeElement.close();
+    }
     this.cancelModalOpen.set(false);
     this.saleToCancel.set(null);
   }

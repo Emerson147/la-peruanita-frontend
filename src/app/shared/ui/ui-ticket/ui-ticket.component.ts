@@ -7,6 +7,8 @@ import {
   OnChanges,
   SimpleChanges,
   HostListener,
+  ViewChild,
+  ElementRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import QRCode from 'qrcode';
@@ -35,272 +37,178 @@ export interface CartItem {
   standalone: true,
   imports: [CommonModule],
   template: `
-    @if (isOpen) {
-      <div
-        class="fixed inset-0 z-60 flex items-center justify-center p-4"
-        tabindex="0"
-        (keydown.escape)="close()"
-      >
-        <!-- Backdrop Glassmorphism Bento -->
-        <div
-          class="absolute inset-0 bg-stone-900/40 dark:bg-black/60 backdrop-blur-md transition-all duration-500"
-          (click)="close()"
-        ></div>
-
+    <dialog
+      #ticketDialog
+      class="bg-transparent p-0 m-auto backdrop:bg-stone-900/40 dark:backdrop:bg-black/60 backdrop:backdrop-blur-md open:animate-in open:fade-in overflow-hidden no-scrollbar"
+      (click)="close()"
+      (cancel)="$event.preventDefault(); cancel()"
+    >
+      @if (isOpen) {
         <!-- Toast de éxito -->
         @if (showSuccess) {
           <div
-            class="fixed top-6 right-6 bg-emerald-500/90 backdrop-blur-sm text-white px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-top-2 text-sm font-bold flex items-center gap-2 z-70 border border-emerald-400"
+            class="fixed top-6 right-6 bg-emerald-500/90 backdrop-blur-sm text-white px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-top-2 text-sm font-bold flex items-center gap-2 z-[70] border border-emerald-400"
           >
             <span class="material-symbols-outlined text-lg">check_circle</span>
             {{ successMessage }}
           </div>
         }
 
-        <!-- Ranura de impresora (Falsa) -->
-        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[320px] h-2 bg-black/40 rounded-b-xl blur-[2px] z-20"></div>
-
-        <!-- Ticket Container Clean Modern POS -->
+        <!-- Ticket Container (Premium Receipt Style) -->
         <div
-          class="ticket-shape relative z-10 w-full max-w-[380px] max-h-[95vh] flex flex-col bg-white dark:bg-[#111111] shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-printer-slide overflow-hidden rounded-3xl"
+          class="relative w-[400px] max-w-[90vw] mx-auto bg-white dark:bg-[#18181b] shadow-[0_40px_100px_rgba(0,0,0,0.5)] animate-in zoom-in-95 fade-in duration-300 font-sans flex flex-col rounded-t-3xl"
+          style="
+            clip-path: polygon(
+              0 0, 100% 0,
+              100% calc(100% - 12px), 95% 100%, 90% calc(100% - 12px), 85% 100%, 80% calc(100% - 12px), 75% 100%, 70% calc(100% - 12px), 65% 100%, 60% calc(100% - 12px), 55% 100%, 50% calc(100% - 12px), 45% 100%, 40% calc(100% - 12px), 35% 100%, 30% calc(100% - 12px), 25% 100%, 20% calc(100% - 12px), 15% 100%, 10% calc(100% - 12px), 5% 100%, 0 calc(100% - 12px)
+            );
+          "
+          (click)="$event.stopPropagation()"
         >
-          <!-- Efecto de textura sutil de papel de fondo -->
-          <div class="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none shrink-0" style="background-image: url('data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100\' height=\'100\' filter=\'url(%23noise)\'/%3E%3C/svg%3E');"></div>
+          <!-- Efecto de textura sutil -->
+          <div class="absolute inset-0 opacity-[0.02] dark:opacity-[0.03] pointer-events-none" style="background-image: url('data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100\' height=\'100\' filter=\'url(%23noise)\'/%3E%3C/svg%3E');"></div>
 
-          <!-- Botón X Elegante para Cancelar -->
-          <button
-            (click)="cancel()"
-            class="absolute top-6 right-5 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 transition-colors shadow-sm no-print"
-            aria-label="Cancelar venta"
-          >
-            <span class="material-symbols-outlined text-sm font-bold">close</span>
-          </button>
-
-          <!-- Header Limpio -->
-          <div
-            class="p-8 pb-6 text-center relative shrink-0"
-          >
-            <div
-              class="mx-auto h-12 w-12 bg-stone-900 dark:bg-white text-white dark:text-stone-900 rounded-[1rem] flex items-center justify-center mb-3 text-2xl font-bold shadow-sm"
+          <!-- Header -->
+          <div class="pt-10 px-8 pb-6 flex flex-col items-center text-center relative shrink-0">
+            <!-- Botón cerrar -->
+            <button
+              (click)="cancel()"
+              class="absolute top-5 right-5 h-8 w-8 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center justify-center transition-all text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 no-print"
+              aria-label="Cerrar recibo"
             >
-              D
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+
+            <!-- Icono de Éxito -->
+            <div
+              class="w-16 h-16 bg-emerald-50 dark:bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-4 shadow-[0_0_40px_rgba(16,185,129,0.2)] animate-in zoom-in duration-700"
+            >
+              <span class="material-symbols-outlined text-3xl font-bold">check</span>
             </div>
-            <h2 class="text-xl font-bold text-stone-900 dark:text-white uppercase tracking-widest">
-              {{ settingsService.config()?.businessName || 'DENFAR' }}
+
+            <h2 class="text-xl font-bold text-stone-900 dark:text-white uppercase tracking-tight">
+              {{ settingsService.config()?.businessName || 'La Peruanita' }}
             </h2>
-            <p class="text-xs text-stone-500 mt-1">RUC: {{ settingsService.config()?.ruc || '20123456789' }}</p>
-            <p class="text-xs text-stone-500">{{ settingsService.config()?.address || 'Jr. La Moda 123, Huancayo' }}</p>
-            <div
-              class="mt-5 inline-flex items-center gap-2 px-3 py-1.5 bg-stone-50 dark:bg-stone-900 rounded-lg"
-            >
-              <span class="text-xs text-stone-900 dark:text-white font-bold"
-                >#{{ ticketNumber.toString().padStart(6, '0') }}</span
-              >
-              <span class="w-1 h-1 rounded-full bg-stone-300 dark:bg-stone-600"></span>
-              <span class="text-[10px] font-bold text-stone-500">{{
-                date | date: 'dd/MM HH:mm'
-              }}</span>
-            </div>
+            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1 font-medium">
+              RUC: {{ settingsService.config()?.ruc || '20123456789' }}
+            </p>
+            <time class="mt-4 px-3 py-1 bg-stone-50 dark:bg-stone-800/50 rounded-lg text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest font-bold">
+              {{ date | date: 'dd/MM/yyyy · HH:mm' }}
+            </time>
           </div>
 
-          <!-- Cliente -->
-          @if (clientName !== 'Cliente') {
-            <div
-              class="px-8 py-4 border-t border-b border-dashed border-stone-200 dark:border-stone-800 bg-stone-50/30 dark:bg-stone-900/30 shrink-0"
-            >
-              <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">
-                Cliente
-              </p>
-              <p class="text-sm font-bold text-stone-900 dark:text-white flex items-center gap-2">
-                <span class="material-symbols-outlined text-[16px] text-stone-400">person</span>
-                {{ clientName }}
-              </p>
-              @if (clientPhone) {
-                <p class="text-xs text-stone-500 mt-0.5 ml-6">{{ clientPhone }}</p>
-              }
-            </div>
-          } @else {
-            <div class="mx-8 border-t border-dashed border-stone-200 dark:border-stone-800 shrink-0"></div>
-          }
+          <!-- Divisor Minimalista -->
+          <div class="mx-8 border-t-2 border-dashed border-stone-200 dark:border-stone-700/60 shrink-0"></div>
 
-          <!-- Items (Este es el que hace scroll) -->
-          <div class="px-8 py-4 text-sm space-y-3 flex-1 overflow-y-auto no-scrollbar min-h-0 relative">
+          <!-- Cuerpo: Datos principales -->
+          <dl class="px-8 py-5 grid grid-cols-2 gap-4 text-[11px] shrink-0">
+            <div>
+              <dt class="text-stone-400 uppercase tracking-[0.2em] mb-1 font-bold text-[9px]">Cliente</dt>
+              <dd class="font-black text-stone-900 dark:text-stone-100 text-sm uppercase truncate">
+                {{ clientName || 'General' }}
+              </dd>
+            </div>
+            <div class="text-right">
+              <dt class="text-stone-400 uppercase tracking-[0.2em] mb-1 font-bold text-[9px]">Pago</dt>
+              <dd class="flex items-center justify-end gap-1.5 font-black text-stone-900 dark:text-stone-100 text-sm uppercase">
+                <span class="material-symbols-outlined text-[14px] text-emerald-500">
+                  {{ paymentMethod === 'Efectivo' ? 'payments' : paymentMethod === 'Tarjeta' ? 'credit_card' : 'qr_code_scanner' }}
+                </span>
+                {{ paymentMethod || 'Efectivo' }}
+              </dd>
+            </div>
+          </dl>
+
+          <!-- Lista de productos (Scrollable) -->
+          <div class="px-8 pb-2 space-y-4 flex-1 overflow-y-auto no-scrollbar min-h-0">
+            <div class="flex justify-between text-[9px] text-stone-400 uppercase tracking-[0.2em] font-black pb-2 border-b border-stone-100 dark:border-stone-800 sticky top-0 bg-white dark:bg-[#18181b] z-10">
+              <span>Concepto</span>
+              <span>Subtotal</span>
+            </div>
+
             @for (item of items; track $index) {
-              <div
-                class="flex justify-between items-start py-2 border-b border-dashed border-stone-100 dark:border-stone-800/80 last:border-0"
-              >
-                <div class="flex gap-3 flex-1 items-start">
-                  <span
-                    class="bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 rounded-md px-1.5 py-0.5 text-xs font-bold shrink-0"
-                    >{{ item.quantity }}x</span
-                  >
-                  <div class="flex-1">
-                    <span
-                      class="text-stone-900 dark:text-stone-100 font-bold text-xs leading-tight block"
-                      >{{ item.product.name }}</span
-                    >
-                    @if (item.variant) {
-                      <div class="flex items-center gap-1.5 mt-1 mb-0.5">
-                        <span class="inline-flex px-1 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900">{{ item.variant.size }}</span>
-                        <span class="inline-flex px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700">{{ item.variant.color }}</span>
-                      </div>
-                    } @else if (item.product.category) {
-                      <span class="text-[9px] font-bold text-stone-400 uppercase tracking-wider block mt-0.5">{{
-                        item.product.category
-                      }}</span>
-                    }
+              <div class="flex justify-between items-start group/item">
+                <div class="flex flex-col gap-0.5">
+                  <div class="flex items-start gap-2">
+                    <span class="bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-1.5 py-0.5 rounded text-[10px] font-black tabular-nums mt-0.5">{{ item.quantity }}x</span>
+                    <span class="text-sm font-bold text-stone-800 dark:text-stone-200 uppercase tracking-tight leading-tight pt-0.5">{{ item.product.name }}</span>
+                  </div>
+                  <div class="text-[10px] text-stone-400 ml-8 flex flex-wrap gap-x-2 font-medium">
+                    <span>S/ {{ item.product.price | number: '1.2-2' }} c/u</span>
+                    @if (item.variant?.size) { <span class="uppercase">Talle: {{ item.variant?.size }}</span> }
+                    @if (item.variant?.color) { <span class="uppercase">Color: {{ item.variant?.color }}</span> }
                   </div>
                 </div>
-                <span class="text-stone-900 dark:text-white font-bold ml-2">
-                  {{ item.product.price * item.quantity | number: '1.2-2' }}
+                <span class="font-mono text-sm font-bold text-stone-900 dark:text-stone-100 tabular-nums">
+                  S/ {{ item.product.price * item.quantity | number: '1.2-2' }}
                 </span>
               </div>
             }
           </div>
 
-          <!-- Totales -->
-          <div class="px-8 pb-4 relative shrink-0">
-            <div class="border-t-2 border-dashed border-stone-300 dark:border-stone-700 pt-4 space-y-2">
-              <div
-                class="flex justify-between text-xs text-stone-500 dark:text-stone-400 font-medium"
-              >
-                <span>Subtotal neto</span>
-                <span>S/ {{ subtotal | number: '1.2-2' }}</span>
-              </div>
-              <div
-                class="flex justify-between text-xs text-stone-500 dark:text-stone-400 font-medium"
-              >
-                <span>IGV ({{ settingsService.config()?.taxPercent || 18 }}%)</span>
-                <span>S/ {{ tax | number: '1.2-2' }}</span>
-              </div>
-              <div
-                class="flex justify-between items-center text-xl font-black text-stone-900 dark:text-white pt-2"
-              >
-                <span>TOTAL</span>
-                <span>S/ {{ total | number: '1.2-2' }}</span>
-              </div>
+          <!-- Footer con totales -->
+          <div class="px-8 pt-4 pb-12 bg-stone-50/50 dark:bg-stone-900/20 relative shrink-0">
+            <div class="absolute top-0 left-8 right-8 border-t-2 border-dashed border-stone-200 dark:border-stone-800"></div>
 
-              <!-- Método de pago y cambio -->
-              @if (paymentMethod) {
-                <div class="bg-stone-50 dark:bg-stone-900 rounded-xl p-4 mt-4 space-y-3 border border-stone-100 dark:border-stone-800">
-                  <div
-                    class="flex justify-between items-center text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider"
-                  >
-                    <span>Método de Pago</span>
-                    <div 
-                      class="px-2.5 py-1 rounded-md text-[10px] font-black text-white flex items-center gap-1 shadow-sm"
-                      [ngClass]="{
-                        'bg-emerald-500 shadow-emerald-500/20': paymentMethod === 'Efectivo',
-                        'bg-[#742384] shadow-[#742384]/20': paymentMethod === 'Yape' || paymentMethod === 'Plin',
-                        'bg-stone-900 dark:bg-stone-100 dark:text-stone-900 shadow-stone-900/20': paymentMethod === 'Tarjeta'
-                      }"
-                    >
-                      <span class="material-symbols-outlined text-[14px]">
-                        {{ paymentMethod === 'Efectivo' ? 'payments' : paymentMethod === 'Tarjeta' ? 'credit_card' : 'qr_code_scanner' }}
-                      </span>
-                      {{ paymentMethod }}
-                    </div>
-                  </div>
-                  
-                  @if (amountPaid > 0) {
-                    <div class="flex justify-between text-xs font-bold text-stone-500 dark:text-stone-400 mt-2">
-                      <span>Monto Entregado</span>
-                      <span class="text-stone-900 dark:text-white">S/ {{ amountPaid | number: '1.2-2' }}</span>
-                    </div>
-                  }
-                  
-                  @if (change > 0) {
-                    <div
-                      class="flex justify-between text-sm font-bold text-stone-900 dark:text-white pt-2 border-t border-stone-200 dark:border-stone-700"
-                    >
-                      <span>VUELTO</span>
-                      <span class="text-emerald-600 dark:text-emerald-400"
-                        >S/ {{ change | number: '1.2-2' }}</span
-                      >
-                    </div>
-                  }
+            <dl class="space-y-1.5 mb-4 text-[11px] pt-4">
+              <div class="flex justify-between font-bold text-stone-400 uppercase tracking-wide">
+                <dt>Subtotal neto</dt>
+                <dd class="text-stone-600 dark:text-stone-300 tabular-nums">S/ {{ subtotal | number: '1.2-2' }}</dd>
+              </div>
+              <div class="flex justify-between font-bold text-stone-400 uppercase tracking-wide">
+                <dt>IGV ({{ settingsService.config()?.taxPercent || 18 }}%)</dt>
+                <dd class="text-stone-600 dark:text-stone-300 tabular-nums">S/ {{ tax | number: '1.2-2' }}</dd>
+              </div>
+              @if (change > 0) {
+                <div class="flex justify-between font-bold text-emerald-500 uppercase tracking-wide pt-1">
+                  <dt>Vuelto Entregado</dt>
+                  <dd class="tabular-nums">S/ {{ change | number: '1.2-2' }}</dd>
                 </div>
               }
+            </dl>
+
+            <div class="flex justify-between items-center border-t border-stone-200 dark:border-stone-700 pt-4 mb-6">
+              <span class="text-sm font-black text-stone-900 dark:text-white uppercase tracking-[0.2em]">Total</span>
+              <dd class="text-2xl font-black text-stone-900 dark:text-white tracking-tight tabular-nums">
+                S/ {{ total | number: '1.2-2' }}
+              </dd>
             </div>
 
-            <!-- Código QR y Mensaje de Despedida -->
-            <div class="pt-6 pb-2 text-center flex flex-col items-center justify-center">
-              @if (qrCode) {
-                <div class="bg-white p-2 rounded-xl border border-stone-200 dark:border-stone-700 shadow-sm inline-block mb-3">
-                  <img [src]="qrCode" alt="Código QR" class="w-20 h-20" />
-                </div>
-              }
-              <p class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">
-                ¡Gracias por su preferencia!
-              </p>
-            </div>
-          </div>
-
-          <!-- Acciones -->
-          <div
-            class="px-8 pb-8 pt-4 flex flex-col gap-2 no-print relative bg-stone-50/50 dark:bg-stone-900/30 shrink-0"
-          >
-            <!-- Sombra superior para separar el papel real de la zona de botones -->
-            <div class="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-stone-200/40 dark:from-stone-900/80 to-transparent pointer-events-none"></div>
-            
-            <div class="flex gap-2">
+            <!-- Acciones finales -->
+            <div class="flex flex-col gap-2.5 w-full no-print relative z-20">
               <button
-                (click)="printTicket()"
-                class="flex-1 py-3.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-white font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-xs"
+                (click)="close()"
+                class="w-full py-4 rounded-[1rem] font-bold text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xl shadow-stone-900/10 dark:shadow-black/40 bg-stone-900 text-white dark:bg-white dark:text-stone-900 hover:opacity-90"
               >
-                <span class="material-symbols-outlined text-lg">print</span>
-                IMPRIMIR
+                Nueva Venta
+                <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
-              <button
-                (click)="sendToWhatsApp()"
-                [disabled]="!clientPhone"
-                class="flex-1 py-3.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#1da851] dark:text-[#25D366] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed text-xs"
-              >
-                <span class="material-symbols-outlined text-lg">chat</span>
-                WHATSAPP
-              </button>
-            </div>
 
-            <button
-              (click)="close()"
-              class="w-full mt-2 py-4 rounded-xl font-bold transition-all active:scale-95 text-sm tracking-widest uppercase shadow-xl flex items-center justify-center gap-2"
-              [ngClass]="{
-                'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20': paymentMethod === 'Efectivo',
-                'bg-[#742384] text-white hover:bg-[#5c1b69] shadow-[#742384]/20': paymentMethod === 'Yape' || paymentMethod === 'Plin',
-                'bg-stone-900 dark:bg-white text-white dark:text-stone-900 hover:opacity-90 shadow-stone-900/20': !paymentMethod || paymentMethod === 'Tarjeta'
-              }"
-            >
-              <span class="material-symbols-outlined text-[18px]">done_all</span>
-              Confirmar Venta
-            </button>
+              <div class="flex gap-2">
+                <button
+                  (click)="printTicket()"
+                  class="flex-1 flex items-center justify-center gap-1.5 px-3 py-3.5 bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-white rounded-[1rem] text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors focus:outline-none focus:ring-2 focus:ring-stone-500"
+                >
+                  <span class="material-symbols-outlined text-[16px]">print</span>
+                  Imprimir
+                </button>
+                <button
+                  (click)="sendToWhatsApp()"
+                  [disabled]="!clientPhone"
+                  class="flex-1 flex items-center justify-center gap-1.5 px-3 py-3.5 bg-[#25D366]/10 text-[#1da851] rounded-[1rem] text-[10px] font-bold uppercase tracking-widest hover:bg-[#25D366]/20 transition-colors focus:outline-none focus:ring-2 focus:ring-stone-500 disabled:opacity-30"
+                >
+                  <span class="material-symbols-outlined text-[16px]">chat</span>
+                  WhatsApp
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    }
+      }
+    </dialog>
   `,
   styles: [
     `
-      /* Animación de "Impresión de Ticket" */
-      @keyframes printerSlide {
-        0% {
-          opacity: 0;
-          transform: translateY(-80px);
-          clip-path: inset(100% 0 0 0);
-        }
-        30% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0);
-          clip-path: inset(0 0 0 0);
-        }
-      }
-
-      .animate-printer-slide {
-        animation: printerSlide 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-      }
-
       /* Animación de slide-in para toast */
       @keyframes slideInFromTop {
         0% {
@@ -336,6 +244,8 @@ export class UiTicketComponent implements OnInit, OnChanges {
   @Output() ticketPrinted = new EventEmitter<void>();
   @Output() ticketSent = new EventEmitter<void>();
 
+  @ViewChild('ticketDialog') ticketDialog!: ElementRef<HTMLDialogElement>;
+
   settingsService = inject(SettingsService);
   exportService = inject(ExportService);
   escPosPrinter = inject(EscPosPrinterService);
@@ -367,9 +277,19 @@ export class UiTicketComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    // Generar QR cuando se abre el ticket
-    if (changes['isOpen'] && this.isOpen) {
-      this.generateQRCode();
+    if (changes['isOpen']) {
+      if (this.isOpen) {
+        this.generateQRCode();
+        setTimeout(() => {
+          if (this.ticketDialog?.nativeElement) {
+            this.ticketDialog.nativeElement.showModal();
+          }
+        }, 0);
+      } else {
+        if (this.ticketDialog?.nativeElement) {
+          this.ticketDialog.nativeElement.close();
+        }
+      }
     }
   }
 
@@ -382,12 +302,18 @@ export class UiTicketComponent implements OnInit, OnChanges {
 
   close() {
     // CONFIRMAR VENTA
+    if (this.ticketDialog?.nativeElement) {
+      this.ticketDialog.nativeElement.close();
+    }
     this.isOpen = false;
     this.closeTicket.emit();
   }
 
   cancel() {
     // ABORTAR VENTA (BOTÓN X)
+    if (this.ticketDialog?.nativeElement) {
+      this.ticketDialog.nativeElement.close();
+    }
     this.isOpen = false;
     this.cancelTicket.emit();
   }
